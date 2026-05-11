@@ -52,6 +52,31 @@ impl FilterState {
         }
     }
 
+    /// Replace any existing `db:` and `coll:` tokens in `self.text` with the given values,
+    /// preserving all other tokens. Passing `None` removes the token.
+    pub fn set_scope(&mut self, db: Option<String>, coll: Option<String>) {
+        // Strip existing db: and coll: tokens
+        let rest: String = self.text
+            .split_whitespace()
+            .filter(|t| !t.starts_with("db:") && !t.starts_with("coll:"))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        let mut parts: Vec<String> = Vec::new();
+        if let Some(d) = db {
+            parts.push(format!("db:{}", d));
+        }
+        if let Some(c) = coll {
+            parts.push(format!("coll:{}", c));
+        }
+        if !rest.is_empty() {
+            parts.push(rest);
+        }
+
+        self.text = parts.join(" ");
+        self.expr = FilterExpr::parse(&self.text);
+    }
+
     pub fn view<'a, Msg: Clone + 'static>(
         &'a self,
         on_msg: impl Fn(FilterMsg) -> Msg + 'static + Copy,
@@ -111,5 +136,50 @@ impl FilterState {
             ..Default::default()
         })
         .into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn set_scope_injects_db_token() {
+        let mut fs = FilterState::new();
+        fs.set_scope(Some("shop".into()), None);
+        assert_eq!(fs.text, "db:shop");
+        assert_eq!(fs.expr.db, Some("shop".into()));
+        assert_eq!(fs.expr.coll, None);
+    }
+
+    #[test]
+    fn set_scope_injects_db_and_coll() {
+        let mut fs = FilterState::new();
+        fs.set_scope(Some("shop".into()), Some("orders".into()));
+        assert_eq!(fs.text, "db:shop coll:orders");
+    }
+
+    #[test]
+    fn set_scope_replaces_existing_db_token() {
+        let mut fs = FilterState::new();
+        fs.text = "db:old coll:x foo".into();
+        fs.set_scope(Some("shop".into()), Some("orders".into()));
+        assert_eq!(fs.text, "db:shop coll:orders foo");
+    }
+
+    #[test]
+    fn set_scope_none_removes_tokens() {
+        let mut fs = FilterState::new();
+        fs.text = "db:shop coll:orders foo".into();
+        fs.set_scope(None, None);
+        assert_eq!(fs.text, "foo");
+    }
+
+    #[test]
+    fn set_scope_db_only_removes_coll() {
+        let mut fs = FilterState::new();
+        fs.text = "db:shop coll:orders".into();
+        fs.set_scope(Some("shop".into()), None);
+        assert_eq!(fs.text, "db:shop");
     }
 }
