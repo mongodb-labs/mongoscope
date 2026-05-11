@@ -59,11 +59,15 @@ impl App {
                 }
                 if added == 0 { return Task::none(); }
                 if self.feed.scroll_locked {
-                    let dy = added as f32 * self.density.row_height();
-                    return scrollable::scroll_by(
-                        scrollable::Id::new(FEED_SCROLL_ID),
-                        scrollable::AbsoluteOffset { x: 0.0, y: dy },
-                    );
+                    let scrolling_up = self.feed.scroll_y < self.feed.prev_scroll_y;
+                    if !scrolling_up {
+                        let dy = added as f32 * self.density.row_height();
+                        self.feed.pending_scroll_by += 1;
+                        return scrollable::scroll_by(
+                            scrollable::Id::new(FEED_SCROLL_ID),
+                            scrollable::AbsoluteOffset { x: 0.0, y: dy },
+                        );
+                    }
                 } else if !self.feed.paused {
                     self.feed.pending_scroll_to += 1;
                     return scrollable::scroll_to(
