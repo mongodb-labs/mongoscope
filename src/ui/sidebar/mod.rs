@@ -1,11 +1,13 @@
 pub mod clients;
 pub mod collections;
 pub mod connections;
+pub mod databases;
 pub mod saved_views;
 
 pub use clients::{clients_panel, ClientItem, ClientsMsg};
 pub use collections::{collections_panel, CollectionItem, CollectionsMsg};
 pub use connections::{connections_panel, ConnectionItem, ConnectionsMsg};
+pub use databases::{DatabaseItem, DatabasesMsg, databases_panel, apply_toggle_db, apply_toggle_collection};
 pub use saved_views::{saved_views_panel, SavedView, SavedViewsMsg};
 
 use iced::{widget::{column, container, row, scrollable, text}, Border, Element, Length, Padding};
