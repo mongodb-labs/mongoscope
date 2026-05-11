@@ -1,4 +1,4 @@
-use iced::{widget::{column, container, row, text}, Border, Color, Element, Length, Padding};
+use iced::{widget::{column, container, row, text}, Color, Element, Length, Padding};
 use crate::theme::Palette;
 
 pub struct KvRow {
@@ -12,20 +12,13 @@ impl KvRow {
     }
 }
 
-pub fn kv_grid<Msg: 'static>(
-    rows: Vec<KvRow>,
-    palette: &Palette,
-    fs: f32,
-) -> Element<'static, Msg> {
-    let border_c = Color { r: palette.border.r, g: palette.border.g, b: palette.border.b, a: 1.0 };
-
-    // Split into two columns
+pub fn kv_grid<Msg: 'static>(rows: Vec<KvRow>, palette: &Palette, fs: f32) -> Element<'static, Msg> {
     let mid = (rows.len() + 1) / 2;
-    let mut col_a = Vec::new();
-    let mut col_b = Vec::new();
+    let mut col_a: Vec<Element<Msg>> = Vec::new();
+    let mut col_b: Vec<Element<Msg>> = Vec::new();
 
     for (i, r) in rows.into_iter().enumerate() {
-        let cell = kv_row(r, palette, fs, border_c);
+        let cell = kv_row(r, palette, fs);
         if i < mid { col_a.push(cell); } else { col_b.push(cell); }
     }
 
@@ -37,25 +30,26 @@ pub fn kv_grid<Msg: 'static>(
     .into()
 }
 
-fn kv_row<Msg: 'static>(r: KvRow, palette: &Palette, fs: f32, border_c: Color) -> Element<'static, Msg> {
-    let key_color = palette.fg_dim;
-    let val_color = palette.fg;
+fn kv_row<Msg: 'static>(r: KvRow, palette: &Palette, fs: f32) -> Element<'static, Msg> {
+    let key_c = palette.fg_dim;
+    let val_c = palette.fg;
+    let border_c = Color { r: palette.border.r, g: palette.border.g, b: palette.border.b, a: 0.7 };
+    let fs_small = (fs - 1.0).max(9.0);
 
-    container(
+    column![
         row![
-            text(r.key).size(fs).color(key_color).font(iced::Font::MONOSPACE).width(Length::Fill),
-            text(r.value).size(fs).color(val_color).font(iced::Font::MONOSPACE),
+            text(r.key).size(fs_small).color(key_c).font(iced::Font::MONOSPACE)
+                .width(Length::Fill),
+            text(r.value).size(fs_small).color(val_c).font(iced::Font::MONOSPACE),
         ]
-        .padding(Padding { top: 3.0, bottom: 3.0, left: 0.0, right: 0.0 })
-    )
-    .width(Length::Fill)
-    .style(move |_| container::Style {
-        border: Border {
-            color: Color { r: border_c.r, g: border_c.g, b: border_c.b, a: 0.5 },
-            width: 0.0,
-            ..Default::default()
-        },
-        ..Default::default()
-    })
+        .padding(Padding { top: 3.0, bottom: 3.0, left: 0.0, right: 0.0 }),
+        container(iced::widget::Space::new(Length::Fill, 0))
+            .height(1)
+            .width(Length::Fill)
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(border_c)),
+                ..Default::default()
+            }),
+    ]
     .into()
 }

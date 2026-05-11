@@ -1,13 +1,13 @@
 pub mod header;
 pub mod tabs;
 
-use iced::{widget::{button, column, container, row}, Border, Element, Length, Padding};
+use iced::{widget::{column, container, row}, Border, Color, Element, Length, Padding};
 use crate::{
     data::model::QueryEntry,
     theme::Palette,
 };
 use tabs::{
-    ComposeMsg, ComposeState, Rule, RulesMsg,
+    ComposeMsg, ComposeState, Rule, RuleAction, RulesMsg,
     explain_tab, overview_tab, request_tab, response_tab,
     rules_tab, schema_tab, timeline_tab,
 };
@@ -70,7 +70,12 @@ impl InspectorState {
         Self {
             tab: InspectorTab::Overview,
             compose: ComposeState::new(),
-            rules: vec![],
+            rules: vec![
+                Rule { id: 0, pattern: "coll == 'orders' && plan == 'COLLSCAN'".into(), action: RuleAction::Warn,      enabled: true,  hits: 3  },
+                Rule { id: 1, pattern: "latency > 1000ms".into(),                       action: RuleAction::Warn,      enabled: true,  hits: 12 },
+                Rule { id: 2, pattern: "client == 'admin-portal' && op == 'deleteMany'".into(), action: RuleAction::Block, enabled: false, hits: 0  },
+                Rule { id: 3, pattern: "coll == 'users' && filter.email".into(),        action: RuleAction::Highlight, enabled: true,  hits: 87 },
+            ],
         }
     }
 
@@ -80,14 +85,20 @@ impl InspectorState {
                 self.tab = tab;
             }
             InspectorMsg::Compose(m) => self.compose.update(m),
+            InspectorMsg::Rules(RulesMsg::Toggle(id)) => {
+                if let Some(r) = self.rules.iter_mut().find(|r| r.id == id) {
+                    r.enabled = !r.enabled;
+                }
+            }
             InspectorMsg::Rules(RulesMsg::Delete(id)) => self.rules.retain(|r| r.id != id),
             InspectorMsg::Rules(RulesMsg::AddNew) => {
-                let id = self.rules.len();
+                let id = self.rules.iter().map(|r| r.id).max().unwrap_or(0) + 1;
                 self.rules.push(Rule {
                     id,
                     pattern: String::new(),
-                    action: tabs::RuleAction::Highlight,
+                    action: RuleAction::Highlight,
                     enabled: true,
+                    hits: 0,
                 });
             }
             InspectorMsg::Rules(_) => {}
@@ -101,51 +112,80 @@ impl InspectorState {
         palette: Palette,
         fs: f32,
     ) -> Element<'a, Msg> {
-        let bg = palette.bg1;
-        let bg2 = palette.bg2;
+        let bg1 = palette.bg1;
+        let bg = palette.bg;
         let border_color = palette.border;
         let accent = palette.accent;
-        let bg_sel = palette.bg_sel;
         let fg = palette.fg;
         let fg_dim = palette.fg_dim;
         let active_tab = self.tab;
+        let fs_small = (fs - 1.0).max(9.0);
 
-        // Tab bar
+        // ── Tab bar: transparent background, 2px bottom indicator on active
         let tab_items: Vec<Element<Msg>> = InspectorTab::all().iter().map(|&tab| {
             let is_active = tab == active_tab;
-            let bg_tab = if is_active { bg_sel } else { bg2 };
             let fg_tab = if is_active { fg } else { fg_dim };
-            let accent_c = accent;
+            let indicator_color = if is_active { accent } else { Color::TRANSPARENT };
 
-            button(
-                iced::widget::text(tab.label()).size(10).color(fg_tab).font(iced::Font::MONOSPACE)
+            let label_area = container(
+                iced::widget::text(tab.label())
+                    .size(fs_small)
+                    .color(fg_tab)
             )
-            .padding(Padding { top: 4.0, bottom: 4.0, left: 8.0, right: 8.0 })
+            .height(Length::Fill)
+            .width(Length::Fill)
+            .align_x(iced::alignment::Horizontal::Center)
+            .align_y(iced::alignment::Vertical::Center);
+
+            let indicator = container(iced::widget::Space::new(Length::Fill, 0))
+                .height(2)
+                .width(Length::Fill)
+                .style(move |_| container::Style {
+                    background: Some(iced::Background::Color(indicator_color)),
+                    ..Default::default()
+                });
+
+            iced::widget::button(
+                column![label_area, indicator]
+                    .height(Length::Fixed(30.0))
+            )
+            .padding(Padding { top: 0.0, bottom: 0.0, left: 14.0, right: 14.0 })
             .on_press(on_msg(InspectorMsg::TabSelect(tab)))
-            .style(move |_, _| button::Style {
-                background: Some(iced::Background::Color(bg_tab)),
-                border: if is_active {
-                    Border { color: accent_c, width: 0.0, radius: 0.0.into() }
-                } else {
-                    Border::default()
-                },
+            .style(move |_, _| iced::widget::button::Style {
+                background: Some(iced::Background::Color(Color::TRANSPARENT)),
+                border: Border::default(),
                 ..Default::default()
             })
             .into()
         }).collect();
 
-        let tab_bar = container(row(tab_items).spacing(1))
+        let tab_row = container(row(tab_items))
             .width(Length::Fill)
             .style(move |_| container::Style {
-                background: Some(iced::Background::Color(bg2)),
-                border: Border { color: border_color, width: 1.0, radius: 0.0.into() },
+                background: Some(iced::Background::Color(bg1)),
                 ..Default::default()
             });
 
+        let tab_border = container(iced::widget::Space::new(Length::Fill, 0))
+            .height(1)
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(border_color)),
+                ..Default::default()
+            });
+
+        let tab_bar = column![tab_row, tab_border];
+
         let fg_dim2 = palette.fg_dim2;
         let content: Element<'a, Msg> = match entry {
-            None => iced::widget::text("Select a query to inspect")
-                .size(fs).color(fg_dim2).font(iced::Font::MONOSPACE).into(),
+            None => container(
+                iced::widget::text("Select a query to inspect")
+                    .size(fs).color(fg_dim2).font(iced::Font::MONOSPACE)
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(iced::alignment::Horizontal::Center)
+            .align_y(iced::alignment::Vertical::Center)
+            .into(),
             Some(e) => match self.tab {
                 InspectorTab::Overview  => overview_tab(e, &palette, fs),
                 InspectorTab::Request   => request_tab(e, &palette, fs),
@@ -176,7 +216,7 @@ impl InspectorState {
         .height(Length::Fill)
         .style(move |_| container::Style {
             background: Some(iced::Background::Color(bg)),
-            border: Border { color: border_color, width: 1.0, radius: 0.0.into() },
+            border: Border { color: border_color, width: 0.0, radius: 0.0.into() },
             ..Default::default()
         })
         .into()
