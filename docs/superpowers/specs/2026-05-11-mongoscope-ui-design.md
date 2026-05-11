@@ -2,6 +2,17 @@
 
 _2026-05-11_
 
+## ⚠ Design URL — HARD REQUIREMENT
+
+The reference HTML prototype is accessed via a private URL provided by the user at the start of each session.
+
+**Rules — no exceptions:**
+- The URL **must never be committed, logged, or stored** in any file in this repo (`.env`, docs, code comments, history, CI config — anywhere).
+- **Do NOT proceed with any implementation work** if the design URL has not been provided in the current session. Stop and ask the user for it first.
+- Every implementation session starts with: fetch the URL → verify the HTML loads → then proceed. If fetch fails, stop and notify the user.
+
+---
+
 ## Overview
 
 Iced (Rust) implementation of the Mongoscope HTML prototype: a dense pro-dev-tool UI for inspecting MongoDB wire traffic (Fiddler for MongoDB). Phase 1 is UI-only with mock live data; real wire-protocol capture slots in later by swapping a single trait impl.
@@ -29,37 +40,91 @@ App
 
 ## File Tree
 
+Target: every file stays under ~80 lines. `widgets/` has zero state — pure `fn foo(...) -> Element<Msg>`. Only `mod.rs` files wire sub-components together.
+
 ```
 src/
-  main.rs                    — App struct, Message enum, update, view, subscription
+  main.rs                         — App struct, Message enum, update, view, subscription
   data/
-    mod.rs                   — re-exports
-    types.rs                 — all nutype domain primitives
-    model.rs                 — QueryEntry, Collection, ClientApp, BsonDoc, Op, Plan
-    source.rs                — DataSource trait (swap point)
-    mock.rs                  — MockSource: async Stream<Item=QueryEntry>
-  theme.rs                   — Theme, Density, Dock, Palette, color tokens
+    mod.rs                        — re-exports
+    types.rs                      — all nutype domain primitives
+    model.rs                      — QueryEntry, Collection, ClientApp, BsonDoc, Op, Plan
+    source.rs                     — DataSource trait (swap point)
+    mock/
+      mod.rs                      — MockSource: async Stream<Item=QueryEntry>
+      templates.rs                — the 15 query templates + buildFeed logic
+  theme.rs                        — Theme, Density, Dock, Palette, all color tokens
   ui/
     mod.rs
-    topbar.rs                — view fn (no state)
-    statusbar.rs             — view fn (no state)
+    topbar.rs                     — view fn (no state)
+    statusbar.rs                  — view fn (no state)
+    widgets/                      — reusable primitives, zero state
+      mod.rs
+      op_badge.rs                 — OpBadge view fn
+      plan_chip.rs                — PlanChip view fn
+      latency_bar.rs              — LatencyBar + format_latency()
+      bson_view.rs                — BsonView (recursive syntax-highlighted tree)
+      mini_card.rs                — MiniCard (titled card shell)
+      warn_banner.rs              — WarnBanner
+      kv_grid.rs                  — KvGrid + KvRow
+      ghost_btn.rs                — ghost_button() styled button helper
+      icon_btn.rs                 — icon_button() helper
+      section_header.rs           — uppercase label (sidebar + cards)
+      toggle.rs                   — Toggle (rules on/off)
+      gantt.rs                    — GanttRow + GanttTrack
+      flame_row.rs                — FlameRow (explain plan stage)
+      schema_row.rs               — SchemaRow
     sidebar/
-      mod.rs                 — State, Msg, update, view
+      mod.rs                      — State, Msg, update, view (composes sections)
+      connections.rs              — ConnectionSection + ConnectionItem
+      collections.rs              — CollectionSection + CollectionItem
+      clients.rs                  — ClientSection + ClientItem
+      saved_views.rs              — SavedViewsSection
     feed/
-      mod.rs                 — State, Msg, update, view
-      density_lane.rs        — Canvas widget (80-bucket flame ribbon)
-      row.rs                 — feed_row() view fn
-      filter.rs              — filter_bar() view fn
+      mod.rs                      — State, Msg, update, view (composes sub-views)
+      filter/
+        mod.rs                    — FilterBar (composes below)
+        search_input.rs           — SearchInput
+        kind_chips.rs             — KindChipGroup
+      density_lane.rs             — Canvas Program (80-bucket ribbon)
+      table/
+        mod.rs                    — FeedTable (header + scrollable list)
+        header.rs                 — FeedHeader (column labels)
+        row.rs                    — FeedRow view fn
+        cells.rs                  — per-column cell renderers
     inspector/
-      mod.rs                 — State, Msg, update, view + tab router
-      overview.rs            — overview_tab() view fn
-      request.rs             — request_tab() view fn
-      response.rs            — response_tab() view fn
-      explain.rs             — explain_tab() view fn
-      timeline.rs            — timeline_tab() view fn
-      compose.rs             — compose_tab() view fn
-      rules.rs               — rules_tab() view fn
-      schema.rs              — schema_tab() view fn
+      mod.rs                      — State, Msg, update, view (tab shell + router only)
+      header.rs                   — InspectorHeader (title + action buttons)
+      tabs/
+        overview/
+          mod.rs                  — overview_tab()
+          hero.rs                 — op badge + latency hero
+          stats.rs                — KvGrid of query stats
+          efficiency.rs           — EfficiencyCard
+        request/
+          mod.rs                  — request_tab()
+          header.rs               — OP_MSG metadata bar + action buttons
+        response/
+          mod.rs
+          header.rs
+        explain/
+          mod.rs                  — explain_tab()
+          plan_flame.rs           — list of FlameRows
+          suggestions.rs          — SuggestionList + SuggRow
+        timeline/
+          mod.rs
+          gantt.rs                — GanttChart (phase breakdown)
+          neighbours.rs           — NeighbourList
+        compose/
+          mod.rs
+          editor.rs               — shell text editor + toolbar
+        rules/
+          mod.rs
+          rule_list.rs            — RuleList + RuleItem
+          interception.rs         — PendingInterception panel
+        schema/
+          mod.rs
+          field_list.rs           — FieldList + FieldRow (with depth indent)
 ```
 
 ---
