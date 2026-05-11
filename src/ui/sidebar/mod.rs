@@ -237,7 +237,8 @@ impl SidebarState {
             ),
         ]
         .spacing(0)
-        .width(Length::Fill);
+        .width(Length::Fill)
+        .padding(Padding { top: 0.0, right: 12.0, bottom: 0.0, left: 0.0 });
 
         container(
             scrollable(content)
