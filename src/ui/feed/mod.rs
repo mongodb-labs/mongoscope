@@ -6,7 +6,7 @@ pub mod table;
 pub use buckets::Buckets;
 pub use density_lane::density_lane;
 pub use filter::{FilterMsg, FilterState};
-pub use table::table_view;
+pub use table::{table_header, table_view};
 
 use iced::{widget::{column, lazy, scrollable}, Element, Length};
 use crate::{
@@ -33,8 +33,10 @@ pub struct FeedState {
     pub paused: bool,
     pub scroll_locked: bool,
     pub frozen_entries: Vec<QueryEntry>,
-    pub last_scroll_y: f32,
-    pub pending_scroll_to: u32,  // scroll_to(y=0) tasks in flight
+    pub pending_scroll_to: u32,   // scroll_to(y=0) tasks in flight
+    pub pending_scroll_by: u32,   // scroll_by(dy) tasks in flight
+    pub scroll_y: f32,            // latest real scroll position
+    pub prev_scroll_y: f32,       // scroll position before that (direction detection)
 }
 
 impl FeedState {
@@ -48,8 +50,10 @@ impl FeedState {
             paused: false,
             scroll_locked: false,
             frozen_entries: Vec::new(),
-            last_scroll_y: 0.0,
             pending_scroll_to: 0,
+            pending_scroll_by: 0,
+            scroll_y: 0.0,
+            prev_scroll_y: 0.0,
         }
     }
 
@@ -77,17 +81,27 @@ impl FeedState {
             }
             FeedMsg::Scrolled(vp) => {
                 let y = vp.absolute_offset().y;
-                // If scroll_to(y=0) was in flight and this is y≈0, it's programmatic — ignore
+                // Programmatic scroll_to(y=0) in flight: ignore the y≈0 event it produces
                 if y < 1.0 && self.pending_scroll_to > 0 {
                     self.pending_scroll_to = self.pending_scroll_to.saturating_sub(1);
                     return;
                 }
-                if y > 5.0 {
+                // Programmatic scroll_by(dy) in flight: ignore the y>0 event it produces.
+                // Without this guard, a scroll_by issued while scroll_locked=true can land
+                // after the user scrolls back to top, firing y=dy > threshold → re-locks.
+                if y > 50.0 && self.pending_scroll_by > 0 {
+                    self.pending_scroll_by = self.pending_scroll_by.saturating_sub(1);
+                    return;
+                }
+                // 50px threshold: macOS momentum/trackpad drift stays well below this;
+                // intentional scroll-down easily exceeds it.
+                if y > 50.0 {
                     self.scroll_locked = true;
-                } else if y < 1.0 && self.last_scroll_y > 5.0 {
+                } else if y < 1.0 && self.scroll_locked {
                     self.scroll_locked = false;
                 }
-                self.last_scroll_y = y;
+                self.prev_scroll_y = self.scroll_y;
+                self.scroll_y = y;
             }
         }
     }
@@ -126,6 +140,8 @@ impl FeedState {
             table_view(&refs, selected, move |id| on_msg(FeedMsg::SelectEntry(id)), &palette, fs)
         });
 
+        let header = table_header::<Msg>(&palette, fs);
+
         let table = scrollable(table_inner)
             .id(scrollable::Id::new(FEED_SCROLL_ID))
             .on_scroll(move |vp| on_msg(FeedMsg::Scrolled(vp)))
@@ -142,6 +158,7 @@ impl FeedState {
                 palette,
             ),
             density_lane(bucket_data, max_total, palette_copy),
+            header,
             table,
         ]
         .spacing(0)

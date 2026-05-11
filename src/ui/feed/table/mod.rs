@@ -15,18 +15,10 @@ pub fn table_view<Msg: Clone + 'static>(
     palette: &Palette,
     fs: f32,
 ) -> Element<'static, Msg> {
-    let header = table_header::<Msg>(palette, fs);
-
     let rows: Vec<Element<Msg>> = entries.iter().map(|entry| {
         let is_selected = selected.map_or(false, |id| id == entry.id);
         table_row(entry, is_selected, on_select, palette, fs)
     }).collect();
 
-    column![
-        header,
-        column(rows).spacing(0).width(Length::Fill),
-    ]
-    .spacing(0)
-    .width(Length::Fill)
-    .into()
+    column(rows).spacing(0).width(Length::Fill).into()
 }
