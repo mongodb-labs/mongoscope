@@ -56,42 +56,50 @@ src/
   theme.rs                        — Theme, Density, Dock, Palette, all color tokens
   ui/
     mod.rs
-    topbar.rs                     — view fn (no state)
-    statusbar.rs                  — view fn (no state)
+    topbar/
+      mod.rs                      — topbar() view fn, composes sub-components
+      logo.rs                     — Logo (gradient square + "Mongoscope" text)
+      menu_bar.rs                 — MenuBar (File/Capture/Rules/View/Help buttons)
+      conn_bar.rs                 — ConnBar (pulsing dot + host + URI + rs name)
+      capture_indicator.rs        — CaptureIndicator (pulsing danger pill)
+    statusbar.rs                  — view fn (no state), derives all values from App
     widgets/                      — reusable primitives, zero state
       mod.rs
-      op_badge.rs                 — OpBadge view fn
-      plan_chip.rs                — PlanChip view fn
-      latency_bar.rs              — LatencyBar + format_latency()
-      bson_view.rs                — BsonView (recursive syntax-highlighted tree)
-      mini_card.rs                — MiniCard (titled card shell)
-      warn_banner.rs              — WarnBanner
-      kv_grid.rs                  — KvGrid + KvRow
-      ghost_btn.rs                — ghost_button() styled button helper
-      icon_btn.rs                 — icon_button() helper
-      section_header.rs           — uppercase label (sidebar + cards)
-      toggle.rs                   — Toggle (rules on/off)
-      gantt.rs                    — GanttRow + GanttTrack
-      flame_row.rs                — FlameRow (explain plan stage)
-      schema_row.rs               — SchemaRow
+      op_badge.rs                 — OpBadge: label map + color map per Op variant
+      plan_chip.rs                — PlanChip: label + color per Plan variant
+      latency_bar.rs              — LatencyBar widget + LatencyClass enum + format_latency() + latency_class()
+      appdot.rs                   — AppDot: 8×8 colored square, border_radius=2 (feed rows, sidebar, filterbar)
+      bson_view.rs                — BsonView: recursive syntax-highlighted tree
+      mini_card.rs                — MiniCard: titled card shell wrapping any children
+      warn_banner.rs              — WarnBanner: amber icon + title + subtext + action button
+      kv_grid.rs                  — KvGrid + KvRow: 2-col key/value dashed-border grid
+      ghost_btn.rs                — ghost_button(variant, label, msg): GhostVariant enum
+      icon_btn.rs                 — icon_button(size, child, msg): Size enum (Normal/Small)
+      section_header.rs           — section_header(label): 10px uppercase fg_dim2
+      toggle.rs                   — Toggle: 24×14 pill, on/off state + message
+      gantt.rs                    — GanttRow + GanttTrack: absolute-positioned phase bar
+      flame_row.rs                — FlameRow: 4-col explain plan stage row
+      schema_row.rs               — SchemaRow: 4-col field row with depth indent
     sidebar/
       mod.rs                      — State, Msg, update, view (composes sections)
       connections.rs              — ConnectionSection + ConnectionItem
       collections.rs              — CollectionSection + CollectionItem
-      clients.rs                  — ClientSection + ClientItem
+      clients.rs                  — ClientSection + ClientItem (uses AppDot)
       saved_views.rs              — SavedViewsSection
     feed/
       mod.rs                      — State, Msg, update, view (composes sub-views)
+      buckets.rs                  — Bucket struct + compute_buckets(rows, n) → Vec<Bucket>
       filter/
-        mod.rs                    — FilterBar (composes below)
-        search_input.rs           — SearchInput
-        kind_chips.rs             — KindChipGroup
-      density_lane.rs             — Canvas Program (80-bucket ribbon)
+        mod.rs                    — FilterBar: composes SearchInput + KindChipGroup + count + icon buttons
+        search_input.rs           — SearchInput: magnifier + text_input + clear button
+        kind_chips.rs             — KindChipGroup: 5-chip segmented selector
+        parser.rs                 — parse_filter(text) → FilterTokens: slow/coll/plan token extraction
+      density_lane.rs             — Canvas Program: renders Vec<Bucket> as 80-bar histogram
       table/
-        mod.rs                    — FeedTable (header + scrollable list)
-        header.rs                 — FeedHeader (column labels)
-        row.rs                    — FeedRow view fn
-        cells.rs                  — per-column cell renderers
+        mod.rs                    — FeedTable: FeedHeader + scrollable FeedRow list
+        header.rs                 — FeedHeader: 10-column label row
+        row.rs                    — FeedRow: 10-column data row, selected/hover/slow states
+        cells.rs                  — per-column cell renderers (uses OpBadge, PlanChip, LatencyBar, AppDot)
     inspector/
       mod.rs                      — State, Msg, update, view (tab shell + router only)
       header.rs                   — InspectorHeader (title + action buttons)
@@ -380,15 +388,281 @@ Filtering is pure: `feed_rows(queries, feed_state, sidebar_state)` returns `Vec<
 
 ## Visual Components
 
-### DensityLane (Canvas)
-80 equal-time buckets over the visible feed. Each bucket bar height = count / max_count. Color: `danger` if any slow, `warn` if max_lat > 100ms, `accent` otherwise. Implemented as `iced::widget::canvas::Canvas` with a stateless `Program`.
+### Topbar (`ui/topbar.rs`)
 
-### FeedRow
-Grid of 10 columns matching the HTML prototype:
-`#` · `t+ms` · `op badge` · `namespace` · `filter/pipeline summary` · `plan chip` · `examined` · `returned` · `client` · `latency bar + value`
+40px fixed height, `bg1` background, 1px bottom border. Left → right:
 
-### OpBadge / PlanChip / LatencyBar
-Reusable view functions. Color mapped from `theme::Palette` fields.
+1. **Logo**: 16×16 px rounded square (`border_radius=4`), gradient fill `accent → oklch(0.58 0.14 200)` (135°). Text "Mongoscope" weight 600, letter-spacing 0.01em. No button — purely decorative.
+2. **MenuBar**: row of ghost text buttons — "File" · "Capture" · "Rules" · "View" · "Help". Each: `fs_small`, 4px vertical / 8px horizontal padding, `border_radius=5`, hover → `bg_hover`. Messages: `MenuFile` · `MenuCapture` · `MenuRules` · `MenuView` · `MenuHelp`.
+3. **Spacer** (fills remaining width).
+4. **ConnBar**: pill shape, 1px border, `bg` fill, mono font `fs_small`. Contents: green pulsing dot (7×7 px circle, `accent` fill, 3px `accent@20%` shadow ring) · bold hostname · dim URI (truncated with ellipsis, max 320px) · dim replica set name. Read-only in mock phase.
+5. **CaptureIndicator**: pill, `danger@15%` background, `danger` text, `fs_small` weight 500. Red 8×8 circle with CSS-equivalent `pulse` animation (opacity 1→0.3→1, 1.4s). Text "Capturing". Read-only in mock phase.
+6. **ThemeToggle**: 28×26 px button, 1px border, `border_radius=6`. Shows "☼" (dark mode) or "☽" (light mode). → `Message::ThemeToggled`.
+
+App-level messages added for menu: `MenuFile | MenuCapture | MenuRules | MenuView | MenuHelp` (all → `eprintln!` in mock phase).
+
+---
+
+### StatusBar (`ui/statusbar.rs`)
+
+22px fixed height at bottom, `bg1` background, 1px top border, mono font 10px, `fg_dim` text.
+
+Left group (separated by dim `│`):
+- "● capturing on conn-1420…conn-1459"
+- "{n} ops captured"
+- "avg {avg_lat}ms"
+- "{slow_count} slow" colored `danger`
+- "buffer {used} / 128 MB"
+
+Spacer.
+
+Right group:
+- "{connection_name} · primary {node} · wire v17"
+- "mongoscope 0.8.2-beta"
+
+All values computed from `App` state — no separate `StatusBar::State`.
+
+---
+
+### DensityLane (`feed/density_lane.rs`)
+
+8px top + 6px bottom padding strip, `bg1` background, 1px bottom border. Two rows:
+
+1. **Label row** (9px, uppercase, letter-spacing 0.08em, `fg_dim2`): left = "DENSITY"; right = "{n} ops · {n} slow" mono.
+2. **Track** (28px tall): 80 vertical bars, 1px gap between. Each bar:
+   - Width: `(available_width - 79px) / 80`
+   - Height: `(bucket.count / max_count) * 28px`, minimum 1px. Zero-count bars invisible (opacity 0).
+   - Color: `danger` if `bucket.has_slow`, `warn` if `bucket.max_lat > 100`, `accent` otherwise.
+   - Border-radius: 1px.
+
+Implemented as `iced::widget::canvas::Canvas` with a `Program` that receives `Vec<Bucket>` as geometry input. Buckets computed in `feed::State` (not inside canvas — keep canvas pure renderer).
+
+```rust
+pub struct Bucket { pub count: u32, pub has_slow: bool, pub max_lat: u32 }
+fn compute_buckets(rows: &[&Arc<QueryEntry>], n: usize) -> Vec<Bucket>
+```
+
+---
+
+### FilterParser (`feed/filter/parser.rs`)
+
+```rust
+pub struct FilterTokens {
+    pub slow_threshold_ms: Option<u32>,  // from slow:>Nms or slow:>Ns
+    pub coll: Option<String>,            // from coll:name
+    pub plan: Option<String>,            // from plan:NAME
+    pub raw: String,                     // remainder after token stripping, lowercased
+}
+
+pub fn parse_filter(text: &str) -> FilterTokens
+```
+
+Matching logic (applied in `feed::State`):
+- `slow_threshold_ms` → `entry.latency_ms >= threshold`
+- `coll` → exact collection name match
+- `plan` → case-insensitive plan string match
+- `raw` (non-empty) → substring in `op+coll+plan+index+app` joined with spaces
+
+---
+
+### SearchInput (`feed/filter/search_input.rs`)
+
+24px tall, flex row, 1px border `border_radius=6`, `bg` fill. Focus → accent border + `bg1` fill.
+
+Contents:
+- Magnifier SVG icon (12×12, `fg_dim`).
+- `iced::widget::text_input`, mono font `fs_small`, transparent background, `fg` text. Placeholder text: `filter: coll:orders slow:>500ms plan:COLLSCAN` in `fg_dim2`.
+- Clear button "✕" (appears only when text non-empty, `fg_dim`) → `feed::Msg::FilterTextCleared`.
+
+Parsed token syntax (handled in `feed::State::apply_filter`):
+- `slow:>{N}ms` or `slow:>{N}s` → latency threshold
+- `coll:{name}` → collection match
+- `plan:{name}` → plan match
+- Remainder after token stripping → substring match on op+coll+plan+index+app
+
+---
+
+### KindChipGroup (`feed/filter/kind_chips.rs`)
+
+Row of 5 chips in a `bg2` rounded container (6px radius, 2px padding). Chips: "all" · "reads" · "writes" · "slow" · "scans". Lowercase mono `fs_small`.
+
+- Active chip: `bg` fill + subtle shadow, `fg` text.
+- Inactive: `fg_dim`, transparent. Hover → `fg`.
+
+→ `feed::Msg::KindFilterChanged(KindFilter)` on click.
+
+---
+
+### FilterBar (`feed/filter/mod.rs`)
+
+40px bar, `bg1` background, 1px bottom border. Horizontal row:
+1. `SearchInput` (flex 1, max 520px)
+2. `KindChipGroup`
+3. Spacer
+4. Count label: "{filtered}/{total}" mono `fs_small` `fg_dim`
+5. **Pause** icon button (24×24, 1px border, `border_radius=5`): two vertical rectangles SVG → `feed::Msg::CaptureToggled`
+6. **Clear** icon button (24×24): × SVG → `feed::Msg::FeedCleared`
+
+---
+
+### FeedHeader (`feed/table/header.rs`)
+
+24px, `bg1` background, 1px bottom border. Same 10-column grid as `FeedRow`. Text 10px uppercase letter-spacing 0.06em `fg_dim2`. Columns (widths fixed):
+
+| Col | Width | Label |
+|-----|-------|-------|
+| `#` | 38px | # |
+| `t+ms` | 58px | t+ms |
+| `op` | 48px | op |
+| `namespace` | 180px | namespace |
+| `filter` | 1fr | filter / pipeline |
+| `plan` | 110px | plan |
+| `examined` | 90px | examined |
+| `returned` | 80px | returned |
+| `client` | 140px | client |
+| `latency` | 140px | latency |
+
+---
+
+### FeedRow (`feed/table/row.rs`)
+
+Height: 26px compact / 32px comfy. Same 10-column grid as header. 1px bottom border.
+
+States:
+- Default: `bg` fill
+- Hover: `bg_hover`
+- Selected: `bg_sel` fill + 2px left `accent` border (left padding reduced to 8px to compensate)
+- Slow: all text colored `danger`
+- Selected + slow: `danger@12%` mixed with `bg_sel`
+
+→ `Message::RowSelected(QueryId)` on click.
+
+---
+
+### FeedRow cells (`feed/table/cells.rs`)
+
+All cells overflow-hidden, text-overflow ellipsis, 8px right padding. Mono font `fs_mono`.
+
+- **`#`**: zero-padded 3-digit row index (not query id), dim.
+- **`t+ms`**: `+{t_ms}` from session start, dim. Right-padded to 4 chars.
+- **`op`**: `OpBadge` widget.
+- **`namespace`**: dim "shop." prefix + `fg` collection name.
+- **`filter/pipeline`**: summary string — aggregate shows `[$match → $group → ...]`; writes show update operator keys; finds show `{ key1, key2, … }` (max 3 keys + "…").
+- **`plan`**: `PlanChip` or dim "—" if None.
+- **`examined`**: `docs_examined` formatted with thousands separator, dim. "—" if None.
+- **`returned`**: `docs_returned` formatted, dim. "—" if None.
+- **`client`**: 8×8 colored square (`appdot`, `border_radius=2`) + dim app name.
+- **`latency`**: `LatencyBar` (flex 1, 4px tall, `bg2` track, colored fill, `border_radius=2`) + right-aligned mono value (min-width 44px). Bar fill width = `min(100, log10(lat+1) * 28)%`.
+
+---
+
+### OpBadge (`widgets/op_badge.rs`)
+
+Inline pill: mono 9.5px weight 600, 2px vertical / 6px horizontal padding, `border_radius=3`. Background = `currentColor@12%`, border = `currentColor@20%` 1px.
+
+Label map:
+- `Find` → "FIND", `FindOne` → "FIND¹", `Aggregate` → "AGG", `CountDocuments` → "CNT"
+- `InsertOne` → "INS", `UpdateOne` → "UPD", `UpdateMany` → "UPD×"
+- `DeleteOne` / `DeleteMany` → "DEL"
+- `Unknown(s)` → `s.to_uppercase()` truncated to 6 chars
+
+Color map:
+- Read ops → `op_read`
+- Write ops → `op_write`
+- Aggregate → `op_agg`
+- Delete ops → `op_delete`
+- Unknown → `fg_dim`
+
+---
+
+### PlanChip (`widgets/plan_chip.rs`)
+
+Mono 9.5px weight 500, 1px vertical / 5px horizontal padding, `border_radius=3`. Background = `currentColor@10%`.
+
+- `CollScan` → "COLLSCAN", color `danger`, background `danger@15%`
+- `IxScan(name)` → "IXSCAN", color `op_read`
+- `IdHack` → "IDHACK", color `ok`
+- `IxScanLookup(name)` → "IXSCAN+LOOKUP", color `op_read`
+- `Unknown(s)` → raw string, color `fg_dim`
+
+---
+
+### LatencyBar (`widgets/latency_bar.rs`)
+
+Two sub-functions:
+
+```rust
+pub fn latency_class(ms: u32) -> LatencyClass  // Ok | Warn | Slow
+pub fn format_latency(ms: u32) -> String       // "4ms" | "1.23s"
+```
+
+Color per class: `Ok` → `ok`, `Warn` → `warn`, `Slow` → `danger` (weight 600 on text).
+
+Bar: horizontal track (`bg2`, 4px height, `border_radius=2`) with fill div. Fill width = `min(100, log10(lat+1) * 28)%`. Fill color = class color.
+
+---
+
+### MiniCard (`widgets/mini_card.rs`)
+
+1px border `border`, `border_radius=6`, `bg1` fill, 10px top / 12px horizontal padding, 6px gap between children. First child must be a section header rendered via `SectionHeader`.
+
+---
+
+### SectionHeader (`widgets/section_header.rs`)
+
+10px, weight 600, letter-spacing 0.08em, uppercase, `fg_dim2`. Used in sidebar section labels, mini card titles, sidebar connection badges.
+
+---
+
+### WarnBanner (`widgets/warn_banner.rs`)
+
+`warn@14%` background, `warn@30%` 1px border, `border_radius=6`, 10px / 12px padding, flex row 10px gap.
+
+- Left: `◆` icon `warn` colored, 13px.
+- Middle: bold title (`warn`, `fs_small`) + subtext dim `fs_small`.
+- Right: ghost button → `inspector::Msg::SuggestIndex`.
+
+---
+
+### AppDot (`widgets/appdot.rs`)
+
+8×8 px square, `border_radius=2`. Accepts `[u8; 3]` RGB color. Used in:
+- `feed/table/cells.rs` — client column
+- `sidebar/clients.rs` — client filter list
+- `sidebar/saved_views.rs` — (future)
+
+Pure view fn: `fn appdot(color: [u8; 3]) -> Element<'static, Never>` — no message, purely decorative.
+
+---
+
+### Toggle (`widgets/toggle.rs`)
+
+24×14 px pill button. Off: `border2` background. On: `accent` background. Knob: 10×10 white circle, 2px from edge, slides with 0.15s ease. → wraps a `bool` value + `on_toggle` message.
+
+---
+
+### GhostButton (`widgets/ghost_btn.rs`)
+
+Three variants:
+
+```rust
+pub enum GhostVariant { Default, Active, Solid, Danger }
+```
+
+- `Default`: `bg` fill, `border` border, `fg` text.
+- `Active` (`.on`): `bg_sel` fill, `accent` border, `fg` text.
+- `Solid`: `accent` fill, `accent_fg` text, `accent` border.
+- `Danger`: `fg` text → `danger`, border → `danger@40%`.
+
+All: `fs_small`, 3px vertical / 10px horizontal padding, `border_radius=5`, inherit font.
+
+---
+
+### IconButton (`widgets/icon_btn.rs`)
+
+24×24 px (or 20×20 small variant). 1px `border` border, `bg` fill, `border_radius=5`. `fg_dim` icon color. Hover → `fg` + `bg_hover`. Wraps any SVG/text child.
+
+---
 
 ### BsonView (`widgets/bson_view.rs`)
 Recursive syntax-highlighted tree. Rules:
