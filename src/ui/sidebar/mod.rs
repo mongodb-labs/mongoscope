@@ -237,32 +237,37 @@ impl SidebarState {
             ),
         ]
         .spacing(0)
-        .width(Length::Fill)
-        .padding(Padding { top: 0.0, right: 12.0, bottom: 0.0, left: 0.0 });
+        .width(Length::Fill);
 
         container(
             scrollable(content)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .style(move |_theme, _status| scrollable::Style {
-                    container: iced::widget::container::Style::default(),
-                    vertical_rail: scrollable::Rail {
-                        background: Some(iced::Background::Color(bg)),
-                        border: Border::default(),
-                        scroller: scrollable::Scroller {
-                            color: fg_dim2,
-                            border: Border { radius: 4.0.into(), ..Default::default() },
-                        },
-                    },
-                    horizontal_rail: scrollable::Rail {
-                        background: None,
-                        border: Border::default(),
-                        scroller: scrollable::Scroller {
-                            color: fg_dim2,
+                .style(move |_theme, status| {
+                    let a = match status {
+                        scrollable::Status::Active => 0.0,
+                        scrollable::Status::Hovered { .. } | scrollable::Status::Dragged { .. } => 1.0,
+                    };
+                    scrollable::Style {
+                        container: iced::widget::container::Style::default(),
+                        vertical_rail: scrollable::Rail {
+                            background: Some(iced::Background::Color(iced::Color { a: a * 0.5, ..bg })),
                             border: Border::default(),
+                            scroller: scrollable::Scroller {
+                                color: iced::Color { a, ..fg_dim2 },
+                                border: Border { radius: 4.0.into(), ..Default::default() },
+                            },
                         },
-                    },
-                    gap: None,
+                        horizontal_rail: scrollable::Rail {
+                            background: None,
+                            border: Border::default(),
+                            scroller: scrollable::Scroller {
+                                color: iced::Color { a: 0.0, ..fg_dim2 },
+                                border: Border::default(),
+                            },
+                        },
+                        gap: None,
+                    }
                 }),
         )
         .width(width)
