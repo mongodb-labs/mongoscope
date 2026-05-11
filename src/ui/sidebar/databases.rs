@@ -22,6 +22,8 @@ pub fn apply_toggle_db(databases: &mut Vec<DatabaseItem>, name: &str) {
             db.active = !db.active;
             if db.active {
                 db.expanded = true;
+            } else {
+                db.expanded = false;
             }
             for c in &mut db.collections {
                 c.active = false;
@@ -209,6 +211,15 @@ mod tests {
         dbs[0].active = true;
         apply_toggle_db(&mut dbs, "shop");
         assert!(!dbs[0].active);
+    }
+
+    #[test]
+    fn toggle_db_collapses_on_deactivation() {
+        let mut dbs = vec![make_db("shop", true, &["orders"])];
+        dbs[0].active = true;
+        apply_toggle_db(&mut dbs, "shop");
+        assert!(!dbs[0].active);
+        assert!(!dbs[0].expanded);
     }
 
     #[test]

@@ -37,7 +37,11 @@ impl FilterExpr {
             } else if token == "warn:true" || token == "warn" {
                 expr.warn = Some(true);
             } else if !token.is_empty() {
-                expr.text = Some(token.to_lowercase());
+                let t = token.to_lowercase();
+                expr.text = Some(match expr.text.take() {
+                    None => t,
+                    Some(existing) => format!("{} {}", existing, t),
+                });
             }
         }
         expr
@@ -179,5 +183,20 @@ mod tests {
     fn chip_tokens_slow_warn() {
         let chips = FilterExpr::chip_tokens("slow warn app:api");
         assert_eq!(chips, vec!["slow", "warn", "app:api"]);
+    }
+
+    #[test]
+    fn parse_accumulates_bare_text() {
+        let expr = FilterExpr::parse("foo bar");
+        assert_eq!(expr.text, Some("foo bar".into()));
+    }
+
+    #[test]
+    fn parse_bare_text_matches_haystack() {
+        let expr = FilterExpr::parse("foo bar");
+        // "foo bar" is the text filter; haystack is "foo bar testapp"
+        assert!(expr.matches(&entry("foo", "bar")));
+        // "shop baz testapp" doesn't contain "foo bar" as substring
+        assert!(!expr.matches(&entry("shop", "baz")));
     }
 }
