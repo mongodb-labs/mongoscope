@@ -1,0 +1,12 @@
+[package]
+name = "mongoscope"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+iced = { version = "0.13", features = ["canvas", "tokio", "lazy"] }
+nutype = { version = "0.5", features = ["serde"] }
+indexmap = "2"
+tokio = { version = "1", features = ["time", "rt-multi-thread", "macros", "sync"] }
+rand = { version = "0.8", features = ["small_rng"] }
+serde = { version = "1", features = ["derive"] }
