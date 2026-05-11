@@ -83,7 +83,13 @@ impl App {
                 self.inspector.update(m);
             }
             Message::Sidebar(m) => {
-                self.sidebar.update(m);
+                self.sidebar.update(m.clone());
+                if let SidebarMsg::Databases(_) = &m {
+                    self.feed.filter.set_scope(
+                        self.sidebar.active_db(),
+                        self.sidebar.active_coll(),
+                    );
+                }
             }
             Message::ToggleTheme => {
                 self.theme = self.theme.toggle();
