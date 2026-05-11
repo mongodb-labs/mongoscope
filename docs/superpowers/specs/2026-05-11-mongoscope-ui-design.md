@@ -117,7 +117,8 @@ src/
           neighbours.rs           — NeighbourList
         compose/
           mod.rs
-          editor.rs               — shell text editor + toolbar
+          editor.rs               — ComposeHeader + footer layout
+          shell_gen.rs            — pure fn shell_gen(q: &QueryEntry) -> String, one branch per Op
         rules/
           mod.rs
           rule_list.rs            — RuleList + RuleItem
@@ -389,11 +390,95 @@ Grid of 10 columns matching the HTML prototype:
 ### OpBadge / PlanChip / LatencyBar
 Reusable view functions. Color mapped from `theme::Palette` fields.
 
-### BsonView
-Recursive view function rendering `BsonDoc` as syntax-highlighted rows. Colors from `tok_*` palette fields.
+### BsonView (`widgets/bson_view.rs`)
+Recursive syntax-highlighted tree. Rules:
+- Keys: `tok_key`. Keys starting with `$` or containing `.` are quoted.
+- Strings: `tok_str` (`"value"`). Strings matching `^ObjectId|^ISODate|^NumberDecimal|^\$\$NOW` render unquoted as `tok_call`.
+- Numbers: `tok_num`. Booleans/null: `tok_lit` (italic).
+- Brackets `{` `}` `[` `]`: `tok_br`. Colons/commas: `tok_colon`.
+- Depth indented: `8 + depth * 14` px left padding per level.
+- Short primitive arrays (≤4 items, no nested objects) inline on one line.
+- Hover on any line highlights it and shows a left accent border.
 
-### Inspector tabs
-Pure functions: `fn overview_tab(q: &QueryEntry, palette: &Palette) -> Element<inspector::Msg>`
+---
+
+## Inspector Tabs — Detailed
+
+Inspector shell: fixed header (38px) + scrollable tab strip (30px compact / 36px comfy) + scrollable body. Docks right (520px wide) or bottom (360px tall). Empty state shows "Select a query to inspect" centered.
+
+**Header:** left = `OpBadge` + `shop.{coll}` + `· #{id}`; right = pin `◉`, share `↗`, close `✕` icon buttons.
+
+### Tab 1 — Overview
+
+Layout (top → bottom, all in padded scroll body):
+
+1. **Hero row** (`overview/hero.rs`): left = `OpBadge` + namespace text; right = large latency number (24px, colored by severity) + "total wall clock" dim label.
+2. **WarnBanner** (`widgets/warn_banner.rs`, conditional on `q.warn`): amber background + border, `◆` icon, bold warn title, subtext "Tap Explain → Tree…", ghost "Suggest index" button → `Msg::SuggestIndex`.
+3. **Stats grid** (`overview/stats.rs`): 2-column `KvGrid`, 11 rows: operation · namespace · plan · index · docs examined · docs returned · examined/returned ratio · latency · client · connection id · started timestamp.
+4. **Efficiency card** (`overview/efficiency.rs`): `MiniCard` titled "efficiency". Gradient bar (ok→warn→danger). Needle position = `100 / max(1, log10(ratio+1) * 3)`%. Labels: "optimal (1×)" · "fair (50×)" · "poor (1000×+)".
+
+### Tab 2 — Request (`request/`)
+
+1. **ReqHeader** (`request/header.rs`): monospace metadata line "OP_MSG · msg_id={id} · {size} B"; right = ghost buttons: "copy" → `CopyRequest`, "as shell" → `CopyAsShell`, "raw bytes" → `CopyRawBytes`.
+2. **BsonView** of reconstructed wire document: `{ $db, {op}: {coll}, filter?, projection?, sort?, limit?, pipeline?, cursor?, updates?, documents?, lsid, $clusterTime }`.
+
+### Tab 3 — Response (`response/`)
+
+1. **RespHeader** (`response/header.rs`): "OP_MSG · response · {n} docs · {bytes} B"; right = ghost buttons: "export" → `ExportResponse`, "as json" → `CopyAsJson`, "diff" → `DiffResponse`.
+2. **BsonView** of response document:
+   - Reads/aggregate: `{ cursor: { firstBatch: [...up to 3 docs...], id: NumberLong(0), ns }, ok: 1 }`. Docs shaped per collection (orders/products/generic).
+   - Writes: `{ n, nModified?, ok: 1 }`.
+
+### Tab 4 — Explain (`explain/`)
+
+1. **ExplainHeader**: left = "winning plan · {plan}" (plan colored `danger` if COLLSCAN); right = 4 view toggle ghost buttons — "Tree" · "Flame" [active] · "Raw" · "Rejected plans (3)" → `ExplainViewChanged` / `ShowRejectedPlans`.
+2. **PlanFlame** (`explain/plan_flame.rs`): vertical list of `FlameRow`s. Each row is a 4-column grid:
+   - Col 1 (160px): stage name, colored by severity (`danger` = COLLSCAN, `warn` = in-memory SORT, neutral otherwise).
+   - Col 2: horizontal track; filled bar width = `max(3%, ms/total_ms * 100%)`; bar color matches severity; ms value shown inside bar in `accent_fg`.
+   - Col 3 (90px): docs count right-aligned.
+   - Col 4: optional note text dimmed (e.g. "no index usable", "spill risk").
+   - Stage sets per plan type:
+     - COLLSCAN: COLLSCAN (92% time, bad) + SORT in memory (6%, warn) + LIMIT (1ms)
+     - IDHACK: single IDHACK row
+     - IXSCAN: IXSCAN·{index} (35%) + FETCH (45%) + optional SORT MERGE (10%) + optional LIMIT
+3. **Suggestions card** (`explain/suggestions.rs`): `MiniCard` titled "suggestions".
+   - COLLSCAN: two `SuggRow`s — (1) "create index" + `db.{coll}.createIndex(...)` code chip + "est. ~4ms · 99.9% faster" + "Apply" button → `ApplySuggestion(0)`; (2) "add covered projection" + `.project({...})` + "avoid FETCH stage" + "Try" → `TrySuggestion(1)`.
+   - Indexed: single "looks healthy" row with green label + description of index used.
+
+### Tab 5 — Timeline (`timeline/`)
+
+1. **TimelineHeader**: dim "t+0" left, "t+{total}ms" right.
+2. **GanttChart** (`timeline/gantt.rs`): 6 phase rows. Each row = label (90px) + relative-positioned track. Bar absolute-positioned: `left = acc/total * 100%`, `width = max(1%, phase_ms/total * 100%)`. Bar background = phase color from palette. ms shown inside bar. Phases: parse (1ms, `t_parse`) · auth (1ms, `t_auth`) · plan (3%, `t_plan`) · exec (85%, `t_exec`) · serialize (8%, `t_ser`) · network↑ (1ms, `t_net`).
+3. **NeighbourList** (`timeline/neighbours.rs`): `MiniCard` titled "neighbours on connection {conn_id}". 7 rows: the 3 queries before, the selected query (highlighted with `bg_sel`), the 3 after. Each row = 4 cols: `+{t_ms}` dim · latency bar (width = `max(8, min(280, log10(lat+1) * 60))px`, colored by severity) · `{op} · {coll}` · `{latency}` dim.
+
+### Tab 6 — Compose (`compose/`)
+
+1. **ComposeHeader** (`compose/editor.rs`): left = "replay on {connection} · or switch →" (connection name accented); right = ghost "↻ Replay" → `ReplayQuery`, ghost "◇ Dry-run" → `DryRunQuery`, solid "▶ Run (⌘↵)" → `RunQuery`.
+2. **Editor**: `text_input` (multiline) pre-populated with `shell_gen(query)` → `ComposeTextChanged`. Shell gen (`compose/shell_gen.rs`) formats per op: `db.coll.find({...}).sort({...}).limit(N)`, `db.coll.aggregate([...])`, `db.coll.updateOne({filter},{update})`, etc. `Op::Unknown(cmd)` → `db.coll.runCommand({cmd: ...})`.
+3. **ComposeFooter**: left = "shell · mongosh 2.4.0" dim; right = "↑↓ history · ⌘K palette · ⌘↵ run" dim.
+
+Note: `compose/shell_gen.rs` is a separate pure function file — complex enough (one branch per Op variant) to warrant isolation.
+
+### Tab 7 — Rules (`rules/`)
+
+1. **RuleHeader**: left = "4 active rules · matched 102× this session" dim; right = solid "+" New rule" button → `NewRuleCreated`.
+2. **RuleList** (`rules/rule_list.rs`): 4 hardcoded rules. Each `RuleItem` = 4-col grid:
+   - Col 1: `Toggle` widget (pill, green when on, grey when off) → `RuleToggled(i)`.
+   - Col 2: two-line body — `WHEN {condition}` (mono) + `DO {action}` (accent colored).
+   - Col 3: `{hits}×` dim.
+   - Col 4: `⋯` icon button → `RuleMenuOpened(i)`.
+   - Disabled rule (off): opacity 0.55.
+3. **PendingInterception** (`rules/interception.rs`): `MiniCard` titled "pending interception". Body: "paused → {op}.{coll} · {app}" + dim "Rule matched: {condition}". Action buttons row: ghost "Edit request" → `InterceptionEditRequest`, ghost "Step over" → `InterceptionStepOver`, solid "▶ Continue" → `InterceptionContinue`, danger "✕ Abort" → `InterceptionAbort`.
+
+### Tab 8 — Schema (`schema/`)
+
+1. **SchemaHeader**: "schema of shop.{coll}" (coll accented) + "· inferred from 2,000 sampled docs" dim.
+2. **FieldList** (`schema/field_list.rs`): one `FieldRow` per field. 4-column grid:
+   - Col 1 (180px): field name mono, indented `4 + depth * 14` px. Nested fields prefixed with dim "└─ " and show only the last path segment.
+   - Col 2 (100px): type string dim (ObjectId / String / Decimal / enum / Array\<Doc\> / etc.)
+   - Col 3 (120px): coverage — thin bar (`schcov-bar`, accent fill) + `{pct}%` dim.
+   - Col 4: sample values joined with " · ", dim, truncated with ellipsis.
+   - Collection-specific field sets: orders (13 fields with nested shipping.country, items.sku/qty) vs products (8 fields) vs generic fallback.
 
 ---
 
