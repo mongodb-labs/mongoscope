@@ -9,13 +9,13 @@ pub struct LatencyMs(u32);
 #[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord))]
 pub struct TimestampMs(u64);
 
-#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash))]
+#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display))]
 pub struct CollectionName(String);
 
-#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash))]
+#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display))]
 pub struct AppName(String);
 
-#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash))]
+#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display))]
 pub struct IndexName(String);
 
 #[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord))]

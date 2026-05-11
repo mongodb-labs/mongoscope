@@ -9,17 +9,13 @@ pub enum Theme {
 
 impl Theme {
     pub fn toggle(self) -> Self {
-        match self {
-            Theme::Dark => Theme::Light,
-            Theme::Light => Theme::Dark,
-        }
+        match self { Theme::Dark => Theme::Light, Theme::Light => Theme::Dark }
     }
-
+    pub fn label(self) -> &'static str {
+        match self { Theme::Dark => "Dark", Theme::Light => "Light" }
+    }
     pub fn palette(self) -> Palette {
-        match self {
-            Theme::Dark => Palette::dark(),
-            Theme::Light => Palette::light(),
-        }
+        match self { Theme::Dark => Palette::dark(), Theme::Light => Palette::light() }
     }
 }
 
@@ -31,8 +27,14 @@ pub enum Density {
 }
 
 impl Density {
+    pub fn toggle(self) -> Self {
+        match self { Density::Compact => Density::Comfy, Density::Comfy => Density::Compact }
+    }
+    pub fn label(self) -> &'static str {
+        match self { Density::Compact => "Compact", Density::Comfy => "Comfy" }
+    }
     pub fn row_height(self) -> f32 {
-        match self { Density::Compact => 26.0, Density::Comfy => 32.0 }
+        match self { Density::Compact => 28.0, Density::Comfy => 34.0 }
     }
     pub fn header_height(self) -> f32 {
         match self { Density::Compact => 28.0, Density::Comfy => 34.0 }
@@ -99,39 +101,39 @@ pub struct Palette {
 impl Palette {
     pub fn dark() -> Self {
         Self {
-            bg:       hex(0x22252e),
-            bg1:      hex(0x292d38),
-            bg2:      hex(0x30353f),
-            bg_sel:   rgba(0x3d, 0x7a, 0x5a, 0.55),
-            bg_hover: hex(0x2d3140),
-            fg:       hex(0xeef0f4),
-            fg_dim:   hex(0x8d96a8),
-            fg_dim2:  hex(0x5e6678),
-            border:   hex(0x363b48),
-            border2:  hex(0x3e4454),
-            accent:   hex(0x5fc490),
-            accent_fg:hex(0x1a1e26),
-            warn:     hex(0xd4a843),
-            danger:   hex(0xe06060),
-            ok:       hex(0x5fc490),
-            op_read:  hex(0x6fb3e8),
-            op_write: hex(0xd4a843),
-            op_agg:   hex(0xb07de8),
-            op_delete:hex(0xe07070),
-            t_parse:  hex(0x607080),
-            t_auth:   hex(0xa07060),
-            t_plan:   hex(0x9070c0),
-            t_exec:   hex(0x5fb880),
-            t_ser:    hex(0xb09040),
-            t_net:    hex(0x6090b0),
-            tok_key:  hex(0x88aadd),
-            tok_str:  hex(0xd4916a),
-            tok_num:  hex(0xb08ed4),
-            tok_lit:  hex(0xd47070),
-            tok_call: hex(0x6ab8cc),
-            tok_br:   hex(0x9098a8),
-            tok_p:    hex(0x606878),
-            tok_colon:hex(0x606878),
+            bg:       frgb(0.0445, 0.0529, 0.0619),
+            bg1:      frgb(0.0728, 0.0831, 0.0941),
+            bg2:      frgb(0.1025, 0.1147, 0.1278),
+            bg_sel:   frgba(0.1260, 0.2268, 0.1414, 0.55),
+            bg_hover: frgb(0.0935, 0.1056, 0.1186),
+            fg:       frgb(0.9150, 0.9229, 0.9289),
+            fg_dim:   frgb(0.5291, 0.5532, 0.5713),
+            fg_dim2:  frgb(0.3698, 0.3926, 0.4096),
+            border:   frgb(0.1300, 0.1426, 0.1562),
+            border2:  frgb(0.1680, 0.1811, 0.1951),
+            accent:   frgb(0.4267, 0.8204, 0.4972),
+            accent_fg:frgb(0.0370, 0.0545, 0.0673),
+            warn:     frgb(0.9668, 0.7211, 0.2406),
+            danger:   frgb(0.9817, 0.4094, 0.3878),
+            ok:       frgb(0.4267, 0.8204, 0.4972),
+            op_read:  frgb(0.1678, 0.7417, 0.9606),
+            op_write: frgb(0.9542, 0.7257, 0.2986),
+            op_agg:   frgb(0.7455, 0.5807, 1.0000),
+            op_delete:frgb(1.0000, 0.4350, 0.4113),
+            t_parse:  frgb(0.2274, 0.3500, 0.4500),
+            t_auth:   frgb(0.6000, 0.3800, 0.2800),
+            t_plan:   frgb(0.7455, 0.5807, 1.0000),
+            t_exec:   frgb(0.4267, 0.8204, 0.4972),
+            t_ser:    frgb(0.9542, 0.7257, 0.2986),
+            t_net:    frgb(0.1678, 0.7417, 0.9606),
+            tok_key:  frgb(0.4766, 0.7403, 1.0000),
+            tok_str:  frgb(1.0000, 0.6144, 0.4649),
+            tok_num:  frgb(0.7147, 0.6661, 0.9995),
+            tok_lit:  frgb(1.0000, 0.5048, 0.4753),
+            tok_call: frgb(0.2274, 0.8084, 0.8373),
+            tok_br:   frgb(0.6002, 0.6249, 0.6434),
+            tok_p:    frgb(0.4255, 0.4488, 0.4662),
+            tok_colon:frgb(0.4255, 0.4488, 0.4662),
         }
     }
 
@@ -188,6 +190,14 @@ fn hex(v: u32) -> Color {
 
 fn rgba(r: u8, g: u8, b: u8, a: f32) -> Color {
     Color { r: r as f32 / 255.0, g: g as f32 / 255.0, b: b as f32 / 255.0, a }
+}
+
+fn frgb(r: f32, g: f32, b: f32) -> Color {
+    Color { r, g, b, a: 1.0 }
+}
+
+fn frgba(r: f32, g: f32, b: f32, a: f32) -> Color {
+    Color { r, g, b, a }
 }
 
 #[cfg(test)]

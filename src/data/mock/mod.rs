@@ -52,7 +52,7 @@ impl DataSource for MockSource {
                 }
 
                 id += 1;
-                tokio::time::sleep(Duration::from_millis(80)).await;
+                tokio::time::sleep(Duration::from_millis(350)).await;
             }
         });
     }
