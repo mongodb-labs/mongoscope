@@ -114,8 +114,8 @@ impl FilterState {
         container(
             row![
                 search_input(
-                    &self.text,
-                    "filter: coll:orders app:api slow",
+                    self.text.clone(),
+                    "filter: db:shop coll:orders app:api slow",
                     move |t| on_msg(FilterMsg::TextChanged(t)),
                     on_msg(FilterMsg::TextSubmit),
                     &palette,
