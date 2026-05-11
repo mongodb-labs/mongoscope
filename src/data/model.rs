@@ -92,6 +92,7 @@ pub struct QueryEntry {
     pub t_ms: TimestampMs,
     pub latency_ms: LatencyMs,
     pub op: Op,
+    pub db: DatabaseName,
     pub coll: CollectionName,
     pub app: AppName,
     pub plan: Option<Plan>,
