@@ -172,8 +172,21 @@ pub struct QueryEntry {
 }
 
 pub enum Op {
-    Find, FindOne, Aggregate, CountDocuments,
-    InsertOne, UpdateOne, UpdateMany, DeleteOne, DeleteMany,
+    // Reads
+    Find,
+    FindOne,
+    Aggregate,
+    CountDocuments,
+    // Writes
+    InsertOne,
+    UpdateOne,
+    UpdateMany,
+    DeleteOne,
+    DeleteMany,
+    // Catch-all — raw command name from wire protocol.
+    // All mock data starts here; specific variants are promoted as support is added.
+    // Display as uppercase raw string in OpBadge. KindFilter treats as "other".
+    Unknown(String),
 }
 
 pub enum Plan {
@@ -181,6 +194,8 @@ pub enum Plan {
     IxScan(IndexName),
     IdHack,
     IxScanLookup(IndexName),
+    // Unrecognized plan stage name — display as-is, no color coding.
+    Unknown(String),
 }
 
 pub type BsonDoc = IndexMap<String, BsonVal>;
@@ -221,7 +236,9 @@ pub trait DataSource: Send + 'static {
 }
 ```
 
-`MockSource` (in `data/mock.rs`) implements this. Cycles through 15 query templates with ±20% latency jitter, emitting ~1 query per 80ms. To use real wire capture: implement `DataSource` on a proxy type and pass it to the subscription at startup.
+`MockSource` (in `data/mock/`) implements this. Cycles through 15 query templates with ±20% latency jitter, emitting ~1 query per 80ms. To use real wire capture: implement `DataSource` on a proxy type and pass it to the subscription at startup.
+
+**Mock data bootstrapping strategy:** Initially all templates emit `Op::Unknown("find")`, `Op::Unknown("aggregate")`, etc. Specific `Op` variants are promoted one at a time as their display/filter support is implemented and verified. This prevents incomplete `match` arms from blocking compilation during development — add a variant, handle it everywhere, promote the mock template.
 
 ---
 
@@ -263,6 +280,18 @@ pub enum Msg {
 }
 ```
 Note: `RowSelected` lives at App level (`Message::RowSelected(QueryId)`) so both Feed and Inspector react.
+
+`KindFilter` variants:
+```rust
+pub enum KindFilter {
+    All,
+    Reads,   // Find | FindOne | Aggregate | CountDocuments
+    Writes,  // InsertOne | UpdateOne | UpdateMany | DeleteOne | DeleteMany
+    Slow,    // latency_ms >= 1000
+    Scans,   // Plan::CollScan
+    Unknown, // Op::Unknown(_)
+}
+```
 
 ### inspector::Msg
 ```rust
