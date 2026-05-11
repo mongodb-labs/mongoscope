@@ -1,28 +1,34 @@
 pub mod clients;
 pub mod collections;
 pub mod connections;
+pub mod databases;
 pub mod saved_views;
 
 pub use clients::{clients_panel, ClientItem, ClientsMsg};
-pub use collections::{collections_panel, CollectionItem, CollectionsMsg};
+pub use collections::CollectionItem;
 pub use connections::{connections_panel, ConnectionItem, ConnectionsMsg};
+pub use databases::{
+    apply_toggle_collection, apply_toggle_db, databases_panel, DatabaseItem, DatabasesMsg,
+};
 pub use saved_views::{saved_views_panel, SavedView, SavedViewsMsg};
 
-use iced::{widget::{column, container, row, scrollable, text}, Border, Element, Length, Padding};
-use crate::theme::Palette;
+use iced::{
+    widget::{column, container, row, scrollable, text},
+    Border, Element, Length, Padding,
+};
+use crate::{data::model::QueryEntry, theme::Palette};
 
 #[derive(Debug, Clone)]
 pub enum SidebarMsg {
     Connections(ConnectionsMsg),
-    Collections(CollectionsMsg),
+    Databases(DatabasesMsg),
     Clients(ClientsMsg),
     SavedViews(SavedViewsMsg),
 }
 
 pub struct SidebarState {
-    pub db_name: String,
+    pub databases: Vec<DatabaseItem>,
     pub connections: Vec<ConnectionItem>,
-    pub collections: Vec<CollectionItem>,
     pub clients: Vec<ClientItem>,
     pub saved_views: Vec<SavedView>,
 }
@@ -30,25 +36,46 @@ pub struct SidebarState {
 impl SidebarState {
     pub fn new() -> Self {
         Self {
-            db_name: "shop".into(),
-            connections: vec![
-                ConnectionItem {
-                    id: 0,
-                    label: "localhost".into(),
-                    topology: "direct".into(),
-                    active: true,
-                    live: true,
+            connections: vec![ConnectionItem {
+                id: 0,
+                label: "localhost".into(),
+                topology: "direct".into(),
+                active: true,
+                live: true,
+            }],
+            databases: vec![
+                DatabaseItem {
+                    name: "shop".into(),
+                    expanded: true,
+                    active: false,
+                    collections: vec![
+                        CollectionItem { name: "orders".into(),    docs: 2_413_882,  size: "8.4 GB".into(),   idx: 7, active: false },
+                        CollectionItem { name: "products".into(),  docs: 184_302,    size: "412 MB".into(),   idx: 5, active: false },
+                        CollectionItem { name: "users".into(),     docs: 892_014,    size: "1.8 GB".into(),   idx: 6, active: false },
+                        CollectionItem { name: "carts".into(),     docs: 71_205,     size: "98 MB".into(),    idx: 3, active: false },
+                        CollectionItem { name: "sessions".into(),  docs: 12_044_119, size: "4.2 GB".into(),   idx: 4, active: false },
+                        CollectionItem { name: "reviews".into(),   docs: 3_201_885,  size: "2.1 GB".into(),   idx: 5, active: false },
+                        CollectionItem { name: "inventory".into(), docs: 48_112,     size: "64 MB".into(),    idx: 4, active: false },
+                        CollectionItem { name: "events".into(),    docs: 88_912_004, size: "41.2 GB".into(),  idx: 2, active: false },
+                    ],
                 },
-            ],
-            collections: vec![
-                CollectionItem { name: "orders".into(),    docs: 2_413_882,  size: "8.4 GB".into(),   idx: 7, active: false },
-                CollectionItem { name: "products".into(),  docs: 184_302,    size: "412 MB".into(),   idx: 5, active: false },
-                CollectionItem { name: "users".into(),     docs: 892_014,    size: "1.8 GB".into(),   idx: 6, active: false },
-                CollectionItem { name: "carts".into(),     docs: 71_205,     size: "98 MB".into(),    idx: 3, active: false },
-                CollectionItem { name: "sessions".into(),  docs: 12_044_119, size: "4.2 GB".into(),   idx: 4, active: false },
-                CollectionItem { name: "reviews".into(),   docs: 3_201_885,  size: "2.1 GB".into(),   idx: 5, active: false },
-                CollectionItem { name: "inventory".into(), docs: 48_112,     size: "64 MB".into(),    idx: 4, active: false },
-                CollectionItem { name: "events".into(),    docs: 88_912_004, size: "41.2 GB".into(),  idx: 2, active: false },
+                DatabaseItem {
+                    name: "analytics".into(),
+                    expanded: false,
+                    active: false,
+                    collections: vec![
+                        CollectionItem { name: "pageviews".into(), docs: 12_500_000, size: "8.2 GB".into(),  idx: 3, active: false },
+                        CollectionItem { name: "funnels".into(),   docs: 420_100,   size: "312 MB".into(),  idx: 2, active: false },
+                    ],
+                },
+                DatabaseItem {
+                    name: "auth".into(),
+                    expanded: false,
+                    active: false,
+                    collections: vec![
+                        CollectionItem { name: "tokens".into(), docs: 2_100_000, size: "1.4 GB".into(), idx: 2, active: false },
+                    ],
+                },
             ],
             clients: vec![],
             saved_views: vec![
@@ -59,12 +86,52 @@ impl SidebarState {
         }
     }
 
-    pub fn register_entries(&mut self, entries: &[crate::data::model::QueryEntry]) {
+    pub fn active_db(&self) -> Option<String> {
+        self.databases.iter().find(|d| d.active).map(|d| d.name.clone())
+    }
+
+    pub fn active_coll(&self) -> Option<String> {
+        self.databases
+            .iter()
+            .find(|d| d.active)
+            .and_then(|d| d.collections.iter().find(|c| c.active))
+            .map(|c| c.name.clone())
+    }
+
+    pub fn register_entries(&mut self, entries: &[QueryEntry]) {
         for entry in entries {
-            let name = entry.app.to_string();
-            if !self.clients.iter().any(|c| c.name == name) {
-                let color = clients::app_color_for(&name);
-                self.clients.push(ClientItem { name, color, active: false });
+            // Register client app
+            let app_name = entry.app.to_string();
+            if !self.clients.iter().any(|c| c.name == app_name) {
+                let color = clients::app_color_for(&app_name);
+                self.clients.push(ClientItem { name: app_name, color, active: false });
+            }
+            // Register database/collection (in case live traffic reveals new ones)
+            let db_name = entry.db.to_string();
+            let coll_name = entry.coll.to_string();
+            if let Some(db) = self.databases.iter_mut().find(|d| d.name == db_name) {
+                if !db.collections.iter().any(|c| c.name == coll_name) {
+                    db.collections.push(CollectionItem {
+                        name: coll_name,
+                        docs: 0,
+                        size: "".into(),
+                        idx: 0,
+                        active: false,
+                    });
+                }
+            } else {
+                self.databases.push(DatabaseItem {
+                    name: db_name,
+                    expanded: true,
+                    active: false,
+                    collections: vec![CollectionItem {
+                        name: coll_name,
+                        docs: 0,
+                        size: "".into(),
+                        idx: 0,
+                        active: false,
+                    }],
+                });
             }
         }
     }
@@ -73,21 +140,24 @@ impl SidebarState {
         match msg {
             SidebarMsg::Connections(m) => match m {
                 ConnectionsMsg::Select(id) => {
-                    for c in &mut self.connections { c.active = c.id == id; }
+                    for c in &mut self.connections {
+                        c.active = c.id == id;
+                    }
                 }
                 ConnectionsMsg::Add => {}
             },
-            SidebarMsg::Collections(m) => match m {
-                CollectionsMsg::Select(name) => {
-                    for c in &mut self.collections {
-                        if c.name == name { c.active = !c.active; } else { c.active = false; }
-                    }
+            SidebarMsg::Databases(m) => match m {
+                DatabasesMsg::ToggleDb(name) => apply_toggle_db(&mut self.databases, &name),
+                DatabasesMsg::ToggleCollection(db, coll) => {
+                    apply_toggle_collection(&mut self.databases, &db, &coll)
                 }
             },
             SidebarMsg::Clients(m) => match m {
                 ClientsMsg::Toggle(name) => {
                     for c in &mut self.clients {
-                        if c.name == name { c.active = !c.active; }
+                        if c.name == name {
+                            c.active = !c.active;
+                        }
                     }
                 }
             },
@@ -102,14 +172,13 @@ impl SidebarState {
         &self,
         on_msg: impl Fn(SidebarMsg) -> Msg + 'static + Copy,
         palette: &Palette,
+        width: f32,
     ) -> Element<'static, Msg> {
-        let bg  = palette.bg;
+        let bg = palette.bg;
         let bg1 = palette.bg1;
         let border_color = palette.border;
-        let fg_dim  = palette.fg_dim;
         let fg_dim2 = palette.fg_dim2;
-        let db_name = self.db_name.clone();
-        let coll_count = self.collections.len();
+        let fg_dim = palette.fg_dim;
 
         let section_header = move |label: String, right: Option<String>| -> Element<'static, Msg> {
             let label_el = text(label)
@@ -122,7 +191,8 @@ impl SidebarState {
                     label_el,
                     iced::widget::Space::new(Length::Fill, 0),
                     text(r).size(9).color(fg_dim).font(iced::Font::MONOSPACE),
-                ].into()
+                ]
+                .into()
             } else {
                 label_el.into()
             };
@@ -138,8 +208,7 @@ impl SidebarState {
                 .into()
         };
 
-        let db_header = format!("DATABASE · {}", db_name);
-        let coll_right = format!("{} colls", coll_count);
+        let db_count = self.databases.len();
 
         let content = column![
             section_header("CONNECTIONS".into(), None),
@@ -148,10 +217,10 @@ impl SidebarState {
                 move |m| on_msg(SidebarMsg::Connections(m)),
                 palette,
             ),
-            section_header(db_header, Some(coll_right)),
-            collections_panel(
-                &self.collections,
-                move |m| on_msg(SidebarMsg::Collections(m)),
+            section_header("DATABASES".into(), Some(format!("{} dbs", db_count))),
+            databases_panel(
+                &self.databases,
+                move |m| on_msg(SidebarMsg::Databases(m)),
                 palette,
             ),
             section_header("CLIENTS".into(), None),
@@ -174,8 +243,34 @@ impl SidebarState {
             scrollable(content)
                 .width(Length::Fill)
                 .height(Length::Fill)
+                .style(move |_theme, status| {
+                    let a = match status {
+                        scrollable::Status::Active => 0.0,
+                        scrollable::Status::Hovered { .. } | scrollable::Status::Dragged { .. } => 1.0,
+                    };
+                    scrollable::Style {
+                        container: iced::widget::container::Style::default(),
+                        vertical_rail: scrollable::Rail {
+                            background: Some(iced::Background::Color(iced::Color { a: a * 0.5, ..bg })),
+                            border: Border::default(),
+                            scroller: scrollable::Scroller {
+                                color: iced::Color { a, ..fg_dim2 },
+                                border: Border { radius: 4.0.into(), ..Default::default() },
+                            },
+                        },
+                        horizontal_rail: scrollable::Rail {
+                            background: None,
+                            border: Border::default(),
+                            scroller: scrollable::Scroller {
+                                color: iced::Color { a: 0.0, ..fg_dim2 },
+                                border: Border::default(),
+                            },
+                        },
+                        gap: None,
+                    }
+                }),
         )
-        .width(200)
+        .width(width)
         .height(Length::Fill)
         .style(move |_| container::Style {
             background: Some(iced::Background::Color(bg)),

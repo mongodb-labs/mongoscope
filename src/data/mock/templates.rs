@@ -6,6 +6,7 @@ use crate::data::{
 
 pub struct Template {
     pub op: Op,
+    pub db: &'static str,
     pub coll: &'static str,
     pub app: &'static str,
     pub plan: Option<Plan>,
@@ -23,6 +24,7 @@ pub fn all_templates() -> Vec<Template> {
     vec![
         Template {
             op: Op::Find,
+            db: "shop",
             coll: "orders",
             app: "checkout-svc",
             plan: Some(Plan::IxScan(IndexName::try_new("userId_1_createdAt_-1").unwrap())),
@@ -37,6 +39,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::Aggregate,
+            db: "shop",
             coll: "orders",
             app: "analytics-worker",
             plan: Some(Plan::CollScan),
@@ -51,6 +54,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::FindOne,
+            db: "shop",
             coll: "products",
             app: "catalog-api",
             plan: Some(Plan::IxScan(IndexName::try_new("sku_1").unwrap())),
@@ -65,6 +69,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::Find,
+            db: "shop",
             coll: "products",
             app: "catalog-api",
             plan: Some(Plan::IxScan(IndexName::try_new("category_1_popularity_-1").unwrap())),
@@ -79,6 +84,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::UpdateOne,
+            db: "shop",
             coll: "carts",
             app: "mobile-bff",
             plan: Some(Plan::IdHack),
@@ -93,6 +99,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::InsertOne,
+            db: "shop",
             coll: "events",
             app: "mobile-bff",
             plan: None,
@@ -107,6 +114,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::Find,
+            db: "shop",
             coll: "sessions",
             app: "mobile-bff",
             plan: Some(Plan::IxScan(IndexName::try_new("token_1").unwrap())),
@@ -121,6 +129,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::Find,
+            db: "shop",
             coll: "reviews",
             app: "catalog-api",
             plan: Some(Plan::IxScan(IndexName::try_new("productId_1_helpful_-1").unwrap())),
@@ -135,6 +144,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::Aggregate,
+            db: "shop",
             coll: "products",
             app: "admin-portal",
             plan: Some(Plan::IxScanLookup(IndexName::try_new("category_1").unwrap())),
@@ -149,6 +159,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::FindOne,
+            db: "shop",
             coll: "users",
             app: "admin-portal",
             plan: Some(Plan::IxScan(IndexName::try_new("email_1").unwrap())),
@@ -163,6 +174,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::UpdateMany,
+            db: "shop",
             coll: "inventory",
             app: "checkout-svc",
             plan: Some(Plan::IxScan(IndexName::try_new("warehouse_1_sku_1").unwrap())),
@@ -177,6 +189,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::DeleteOne,
+            db: "shop",
             coll: "carts",
             app: "checkout-svc",
             plan: Some(Plan::IdHack),
@@ -191,6 +204,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::Find,
+            db: "shop",
             coll: "orders",
             app: "admin-portal",
             plan: Some(Plan::CollScan),
@@ -205,6 +219,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::Find,
+            db: "shop",
             coll: "products",
             app: "catalog-api",
             plan: Some(Plan::IxScan(IndexName::try_new("tags_1").unwrap())),
@@ -219,6 +234,7 @@ pub fn all_templates() -> Vec<Template> {
         },
         Template {
             op: Op::CountDocuments,
+            db: "shop",
             coll: "orders",
             app: "admin-portal",
             plan: Some(Plan::IxScan(IndexName::try_new("status_1").unwrap())),
@@ -229,6 +245,53 @@ pub fn all_templates() -> Vec<Template> {
             warn: None,
             slow: false,
             filter_keys: &["status"],
+            pipeline_stages: &[],
+        },
+        // analytics database
+        Template {
+            op: Op::Aggregate,
+            db: "analytics",
+            coll: "pageviews",
+            app: "analytics-worker",
+            plan: Some(Plan::IxScan(IndexName::try_new("ts_1_page_1").unwrap())),
+            index: Some("ts_1_page_1"),
+            docs_examined: Some(45_000),
+            docs_returned: Some(200),
+            base_latency_ms: 88,
+            warn: None,
+            slow: false,
+            filter_keys: &["ts", "page"],
+            pipeline_stages: &["$match", "$group", "$sort"],
+        },
+        Template {
+            op: Op::Find,
+            db: "analytics",
+            coll: "funnels",
+            app: "analytics-worker",
+            plan: Some(Plan::CollScan),
+            index: None,
+            docs_examined: Some(420_100),
+            docs_returned: Some(1),
+            base_latency_ms: 712,
+            warn: Some("collection scan on funnels"),
+            slow: true,
+            filter_keys: &["campaignId"],
+            pipeline_stages: &[],
+        },
+        // auth database
+        Template {
+            op: Op::FindOne,
+            db: "auth",
+            coll: "tokens",
+            app: "mobile-bff",
+            plan: Some(Plan::IxScan(IndexName::try_new("token_1_exp_1").unwrap())),
+            index: Some("token_1_exp_1"),
+            docs_examined: Some(1),
+            docs_returned: Some(1),
+            base_latency_ms: 1,
+            warn: None,
+            slow: false,
+            filter_keys: &["token", "exp"],
             pipeline_stages: &[],
         },
     ]

@@ -8,7 +8,7 @@ pub use density_lane::density_lane;
 pub use filter::{FilterMsg, FilterState};
 pub use table::{table_header, table_view};
 
-use iced::{widget::{column, lazy, scrollable}, Element, Length};
+use iced::{widget::{column, lazy, scrollable}, Border, Element, Length};
 use crate::{
     data::{model::QueryEntry, types::QueryId},
     theme::{Density, Palette},
@@ -124,6 +124,8 @@ impl FeedState {
         let max_total = self.buckets.max_total();
         let bucket_data = &self.buckets.data;
         let palette_copy = palette;
+        let bg = palette.bg;
+        let fg_dim2 = palette.fg_dim2;
 
         let take_n = if self.scroll_locked { 500 } else { 150 };
         let visible: Vec<QueryEntry> = self.visible_entries()
@@ -146,7 +148,33 @@ impl FeedState {
             .id(scrollable::Id::new(FEED_SCROLL_ID))
             .on_scroll(move |vp| on_msg(FeedMsg::Scrolled(vp)))
             .width(Length::Fill)
-            .height(Length::Fill);
+            .height(Length::Fill)
+            .style(move |_theme, status| {
+                let a = match status {
+                    scrollable::Status::Active => 0.0,
+                    scrollable::Status::Hovered { .. } | scrollable::Status::Dragged { .. } => 1.0,
+                };
+                scrollable::Style {
+                    container: iced::widget::container::Style::default(),
+                    vertical_rail: scrollable::Rail {
+                        background: Some(iced::Background::Color(iced::Color { a: a * 0.5, ..bg })),
+                        border: Border::default(),
+                        scroller: scrollable::Scroller {
+                            color: iced::Color { a, ..fg_dim2 },
+                            border: Border { radius: 4.0.into(), ..Default::default() },
+                        },
+                    },
+                    horizontal_rail: scrollable::Rail {
+                        background: None,
+                        border: Border::default(),
+                        scroller: scrollable::Scroller {
+                            color: iced::Color { a: 0.0, ..fg_dim2 },
+                            border: Border::default(),
+                        },
+                    },
+                    gap: None,
+                }
+            });
 
         column![
             self.filter.view(

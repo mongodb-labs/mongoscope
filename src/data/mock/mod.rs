@@ -33,6 +33,7 @@ impl DataSource for MockSource {
                     t_ms: TimestampMs::new(t_ms),
                     latency_ms: LatencyMs::new(latency),
                     op: tpl.op.clone(),
+                    db: DatabaseName::try_new(tpl.db).unwrap(),
                     coll: CollectionName::try_new(tpl.coll).unwrap(),
                     app: AppName::try_new(tpl.app).unwrap(),
                     plan: tpl.plan.clone(),
