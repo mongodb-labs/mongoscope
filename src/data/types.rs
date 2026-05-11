@@ -16,6 +16,9 @@ pub struct CollectionName(String);
 pub struct AppName(String);
 
 #[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display))]
+pub struct DatabaseName(String);
+
+#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display))]
 pub struct IndexName(String);
 
 #[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord))]
@@ -29,3 +32,20 @@ pub struct FilterText(String);
 
 #[nutype(sanitize(trim), derive(Debug, Clone, PartialEq, Eq))]
 pub struct ComposeText(String);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn database_name_rejects_empty() {
+        assert!(DatabaseName::try_new("").is_err());
+        assert!(DatabaseName::try_new("  ").is_err());
+    }
+
+    #[test]
+    fn database_name_trims_and_accepts() {
+        let n = DatabaseName::try_new(" shop ").unwrap();
+        assert_eq!(n.to_string(), "shop");
+    }
+}
