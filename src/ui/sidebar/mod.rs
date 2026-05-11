@@ -172,6 +172,7 @@ impl SidebarState {
         &self,
         on_msg: impl Fn(SidebarMsg) -> Msg + 'static + Copy,
         palette: &Palette,
+        width: f32,
     ) -> Element<'static, Msg> {
         let bg = palette.bg;
         let bg1 = palette.bg1;
@@ -241,9 +242,29 @@ impl SidebarState {
         container(
             scrollable(content)
                 .width(Length::Fill)
-                .height(Length::Fill),
+                .height(Length::Fill)
+                .style(move |_theme, _status| scrollable::Style {
+                    container: iced::widget::container::Style::default(),
+                    vertical_rail: scrollable::Rail {
+                        background: Some(iced::Background::Color(bg)),
+                        border: Border::default(),
+                        scroller: scrollable::Scroller {
+                            color: fg_dim2,
+                            border: Border { radius: 4.0.into(), ..Default::default() },
+                        },
+                    },
+                    horizontal_rail: scrollable::Rail {
+                        background: None,
+                        border: Border::default(),
+                        scroller: scrollable::Scroller {
+                            color: fg_dim2,
+                            border: Border::default(),
+                        },
+                    },
+                    gap: None,
+                }),
         )
-        .width(200)
+        .width(width)
         .height(Length::Fill)
         .style(move |_| container::Style {
             background: Some(iced::Background::Color(bg)),

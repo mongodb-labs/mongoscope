@@ -2,7 +2,7 @@ mod data;
 mod theme;
 mod ui;
 
-use iced::{widget::{column, container, row, scrollable}, Element, Length, Subscription, Task};
+use iced::{mouse, widget::{column, container, mouse_area, row, scrollable}, Element, Length, Subscription, Task};
 use data::{mock::MockSource, model::QueryEntry, source::DataSource, types::QueryId};
 use theme::{Density, Dock, Palette, Theme};
 use ui::{
@@ -23,6 +23,9 @@ enum Message {
     ToggleDensity,
     ToggleCapture,
     Menu(MenuMsg),
+    SidebarResizeStart,
+    SidebarResizeMove(f32),
+    SidebarResizeEnd,
 }
 
 struct App {
@@ -33,6 +36,8 @@ struct App {
     density: Density,
     capturing: bool,
     tx: Option<tokio::sync::mpsc::Sender<QueryEntry>>,
+    sidebar_width: f32,
+    sidebar_dragging: bool,
 }
 
 impl App {
@@ -45,6 +50,8 @@ impl App {
             density: Density::Compact,
             capturing: true,
             tx: None,
+            sidebar_width: 220.0,
+            sidebar_dragging: false,
         };
         (app, Task::none())
     }
@@ -101,6 +108,17 @@ impl App {
                 self.capturing = !self.capturing;
             }
             Message::Menu(_) => {}
+            Message::SidebarResizeStart => {
+                self.sidebar_dragging = true;
+            }
+            Message::SidebarResizeMove(x) => {
+                if self.sidebar_dragging {
+                    self.sidebar_width = x.max(120.0).min(400.0);
+                }
+            }
+            Message::SidebarResizeEnd => {
+                self.sidebar_dragging = false;
+            }
         }
         Task::none()
     }
@@ -142,7 +160,18 @@ impl App {
             &palette,
         );
 
-        let sidebar_el = self.sidebar.view(|m| Message::Sidebar(m), &palette);
+        let sidebar_el = self.sidebar.view(|m| Message::Sidebar(m), &palette, self.sidebar_width);
+
+        let resize_handle = mouse_area(
+            container(iced::widget::Space::new(4.0, Length::Fill))
+                .style(move |_| container::Style {
+                    background: Some(iced::Background::Color(border_color)),
+                    ..Default::default()
+                })
+        )
+        .on_press(Message::SidebarResizeStart)
+        .on_release(Message::SidebarResizeEnd)
+        .interaction(mouse::Interaction::ResizingHorizontally);
 
         let feed_el = self.feed.view(|m| Message::Feed(m), palette, self.density);
 
@@ -170,6 +199,7 @@ impl App {
 
         let body = row![
             sidebar_el,
+            resize_handle,
             main_pane,
         ]
         .spacing(0)
@@ -189,7 +219,7 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        Subscription::run(|| {
+        let data_sub = Subscription::run(|| {
             iced::stream::channel(256, |mut output| async move {
                 use iced::futures::SinkExt;
                 let (tx, mut rx) = tokio::sync::mpsc::channel(256);
@@ -212,7 +242,24 @@ impl App {
                     let _ = output.send(Message::QueriesReceived(batch)).await;
                 }
             })
-        })
+        });
+
+        if self.sidebar_dragging {
+            let drag_sub = iced::event::listen_with(|event, _status, _window| {
+                match event {
+                    iced::Event::Mouse(mouse::Event::CursorMoved { position }) => {
+                        Some(Message::SidebarResizeMove(position.x))
+                    }
+                    iced::Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                        Some(Message::SidebarResizeEnd)
+                    }
+                    _ => None,
+                }
+            });
+            Subscription::batch([data_sub, drag_sub])
+        } else {
+            data_sub
+        }
     }
 }
 
