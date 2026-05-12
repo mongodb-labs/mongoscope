@@ -201,7 +201,6 @@ fn footer_view<Msg: Clone + 'static>(
     let mut footer_btn = button(
         text(btn_text).size(11).color(btn_fg).font(Font::MONOSPACE)
     )
-    .width(Length::Fill)
     .padding(Padding { top: 7.0, bottom: 7.0, left: 14.0, right: 14.0 })
     .style(move |_, _| button::Style {
         background: Some(Background::Color(btn_bg)),
