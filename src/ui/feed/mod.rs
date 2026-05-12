@@ -21,6 +21,7 @@ pub enum FeedMsg {
     Filter(FilterMsg),
     SelectEntry(QueryId),
     TogglePause,
+    ClearEntries,
     Scrolled(scrollable::Viewport),
 }
 
@@ -78,6 +79,12 @@ impl FeedState {
                 if !self.paused {
                     self.scroll_locked = false;
                 }
+            }
+            FeedMsg::ClearEntries => {
+                self.entries.clear();
+                self.frozen_entries.clear();
+                self.buckets = Buckets::new(500);
+                self.selected = None;
             }
             FeedMsg::Scrolled(vp) => {
                 let y = vp.absolute_offset().y;
@@ -180,6 +187,7 @@ impl FeedState {
             self.filter.view(
                 move |m| on_msg(FeedMsg::Filter(m)),
                 on_msg(FeedMsg::TogglePause),
+                on_msg(FeedMsg::ClearEntries),
                 self.paused,
                 visible_count,
                 total_count,
