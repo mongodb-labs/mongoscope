@@ -4,11 +4,11 @@ mod ui;
 
 use std::time::Duration;
 use iced::{mouse, widget::{column, container, mouse_area, row, scrollable, stack}, Element, Length, Subscription, Task};
-use data::{mock::MockSource, model::QueryEntry, source::DataSource, types::QueryId};
-use theme::{Density, Dock, Palette, Theme};
+use data::{mock::MockSource, model::QueryEntry, source::DataSource};
+use theme::{Density, Theme};
 use ui::{
     dialog::dialog_view,
-    feed::{FeedMsg, FeedState, FEED_SCROLL_ID},
+    feed::{FeedMsg, FEED_SCROLL_ID},
     inspector::{InspectorMsg, InspectorState},
     sidebar::{connections::ConnectionsMsg, SidebarMsg, SidebarState},
     statusbar::{statusbar, StatusInfo},
@@ -17,7 +17,7 @@ use ui::{
 
 #[derive(Debug, Clone)]
 enum Message {
-    QueriesReceived(Vec<QueryEntry>),
+    QueriesReceived(usize, Vec<QueryEntry>),
     Feed(FeedMsg),
     Inspector(InspectorMsg),
     Sidebar(SidebarMsg),
@@ -31,13 +31,10 @@ enum Message {
 }
 
 struct App {
-    feed: FeedState,
     inspector: InspectorState,
     sidebar: SidebarState,
     theme: Theme,
     density: Density,
-    capturing: bool,
-    tx: Option<tokio::sync::mpsc::Sender<QueryEntry>>,
     sidebar_width: f32,
     sidebar_dragging: bool,
 }
@@ -45,13 +42,10 @@ struct App {
 impl App {
     fn new() -> (Self, Task<Message>) {
         let mut app = Self {
-            feed: FeedState::new(),
             inspector: InspectorState::new(),
             sidebar: SidebarState::new(),
             theme: Theme::Dark,
             density: Density::Compact,
-            capturing: true,
-            tx: None,
             sidebar_width: 220.0,
             sidebar_dragging: false,
         };
@@ -63,36 +57,46 @@ impl App {
 
     fn update(&mut self, msg: Message) -> Task<Message> {
         match msg {
-            Message::QueriesReceived(entries) => {
-                self.sidebar.register_entries(&entries);
-                let mut added = 0usize;
-                for entry in entries {
-                    if self.feed.push_entry(entry) { added += 1; }
-                }
-                if added == 0 { return Task::none(); }
-                if self.feed.scroll_locked {
-                    let scrolling_up = self.feed.scroll_y < self.feed.prev_scroll_y;
-                    if !scrolling_up {
-                        let dy = added as f32 * self.density.row_height();
-                        self.feed.pending_scroll_by += 1;
-                        return scrollable::scroll_by(
+            Message::QueriesReceived(conn_id, entries) => {
+                let active_id = self.sidebar.active_id;
+                if let Some(conn) = self.sidebar.connections.iter_mut().find(|c| c.item.id == conn_id) {
+                    if !conn.capturing { return Task::none(); }
+                    conn.register_entries(&entries);
+                    let mut added = 0usize;
+                    for entry in entries {
+                        if conn.feed.push_entry(entry) { added += 1; }
+                    }
+                    let is_active = active_id == Some(conn_id);
+                    if added == 0 || !is_active { return Task::none(); }
+                    if conn.feed.scroll_locked {
+                        let scrolling_up = conn.feed.scroll_y < conn.feed.prev_scroll_y;
+                        if !scrolling_up {
+                            let dy = added as f32 * self.density.row_height();
+                            conn.feed.pending_scroll_by += 1;
+                            return scrollable::scroll_by(
+                                scrollable::Id::new(FEED_SCROLL_ID),
+                                scrollable::AbsoluteOffset { x: 0.0, y: dy },
+                            );
+                        }
+                    } else if !conn.feed.paused {
+                        conn.feed.pending_scroll_to += 1;
+                        return scrollable::scroll_to(
                             scrollable::Id::new(FEED_SCROLL_ID),
-                            scrollable::AbsoluteOffset { x: 0.0, y: dy },
+                            scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
                         );
                     }
-                } else if !self.feed.paused {
-                    self.feed.pending_scroll_to += 1;
-                    return scrollable::scroll_to(
-                        scrollable::Id::new(FEED_SCROLL_ID),
-                        scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
-                    );
                 }
+                Task::none()
             }
             Message::Feed(m) => {
-                self.feed.update(m);
+                if let Some(conn) = self.sidebar.active_mut() {
+                    conn.feed.update(m);
+                }
+                Task::none()
             }
             Message::Inspector(m) => {
                 self.inspector.update(m);
+                Task::none()
             }
             Message::Sidebar(ref m) => {
                 match m {
@@ -119,38 +123,45 @@ impl App {
                     }
                     _ => {}
                 }
-                // Default: delegate to sidebar
                 self.sidebar.update(m.clone());
                 if let SidebarMsg::Databases(_) = m {
-                    self.feed.filter.set_scope(
-                        self.sidebar.active_db(),
-                        self.sidebar.active_coll(),
-                    );
+                    let (db, coll) = (self.sidebar.active_db(), self.sidebar.active_coll());
+                    if let Some(conn) = self.sidebar.active_mut() {
+                        conn.feed.filter.set_scope(db, coll);
+                    }
                 }
+                Task::none()
             }
             Message::ToggleTheme => {
                 self.theme = self.theme.toggle();
+                Task::none()
             }
             Message::ToggleDensity => {
                 self.density = self.density.toggle();
+                Task::none()
             }
             Message::ToggleCapture => {
-                self.capturing = !self.capturing;
+                if let Some(conn) = self.sidebar.active_mut() {
+                    conn.capturing = !conn.capturing;
+                }
+                Task::none()
             }
-            Message::Menu(_) => {}
+            Message::Menu(_) => Task::none(),
             Message::SidebarResizeStart => {
                 self.sidebar_dragging = true;
+                Task::none()
             }
             Message::SidebarResizeMove(x) => {
                 if self.sidebar_dragging {
                     self.sidebar_width = x.max(120.0).min(400.0);
                 }
+                Task::none()
             }
             Message::SidebarResizeEnd => {
                 self.sidebar_dragging = false;
+                Task::none()
             }
         }
-        Task::none()
     }
 
     fn view(&self) -> Element<Message> {
@@ -158,6 +169,8 @@ impl App {
         let fs = self.density.fs_base();
         let bg = palette.bg;
         let border_color = palette.border;
+
+        let capturing = self.sidebar.active().map(|c| c.capturing).unwrap_or(false);
 
         let conn = ConnInfo {
             host: "localhost:27017".into(),
@@ -168,19 +181,24 @@ impl App {
 
         let top = topbar(
             &conn,
-            self.capturing,
+            capturing,
             |m| Message::Menu(m),
             Message::ToggleCapture,
             &palette,
         );
 
-        let ops_per_sec = if self.feed.entries.len() >= 10 { 12.5f32 } else { 0.0 };
-        let slow_count = self.feed.entries.iter().filter(|e| e.slow).count();
+        let (ops_per_sec, query_count, slow_count) = self.sidebar.active()
+            .map(|c| {
+                let ops = if c.feed.entries.len() >= 10 { 12.5f32 } else { 0.0 };
+                let slow = c.feed.entries.iter().filter(|e| e.slow).count();
+                (ops, c.feed.entries.len(), slow)
+            })
+            .unwrap_or((0.0, 0, 0));
 
         let status = statusbar(
             &StatusInfo {
                 ops_per_sec,
-                query_count: self.feed.entries.len(),
+                query_count,
                 slow_count,
                 theme_label: self.theme.label(),
                 density_label: self.density.label(),
@@ -203,10 +221,15 @@ impl App {
         .on_release(Message::SidebarResizeEnd)
         .interaction(mouse::Interaction::ResizingHorizontally);
 
-        let feed_el = self.feed.view(|m| Message::Feed(m), palette, self.density);
+        let feed_el: Element<Message> = if let Some(conn) = self.sidebar.active() {
+            conn.feed.view(|m| Message::Feed(m), palette, self.density)
+        } else {
+            iced::widget::Space::new(Length::Fill, Length::Fill).into()
+        };
 
-        let selected_entry = self.feed.selected
-            .and_then(|id| self.feed.entries.iter().find(|e| e.id == id));
+        let selected_entry = self.sidebar.active().and_then(|c| {
+            c.feed.selected.and_then(|id| c.feed.entries.iter().find(|e| e.id == id))
+        });
 
         let inspector_el = self.inspector.view(
             selected_entry,
@@ -264,30 +287,35 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let data_sub = Subscription::run(|| {
-            iced::stream::channel(256, |mut output| async move {
-                use iced::futures::SinkExt;
-                let (tx, mut rx) = tokio::sync::mpsc::channel(256);
-                Box::new(MockSource).start(tx);
-                loop {
-                    // Collect up to 8 entries or wait 100ms, whichever comes first
-                    let first = rx.recv().await;
-                    let Some(first) = first else { break };
-                    let mut batch = vec![first];
-                    let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(300);
-                    loop {
-                        match tokio::time::timeout_at(deadline, rx.recv()).await {
-                            Ok(Some(e)) => {
-                                batch.push(e);
-                                if batch.len() >= 8 { break; }
+        let data_subs: Vec<Subscription<Message>> = self.sidebar.connections
+            .iter()
+            .filter(|c| c.item.live)
+            .map(|c| {
+                let id = c.item.id;
+                Subscription::run_with_id(id, iced::stream::channel(256, move |mut output| async move {
+                        use iced::futures::SinkExt;
+                        let (tx, mut rx) = tokio::sync::mpsc::channel(256);
+                        Box::new(MockSource).start(tx);
+                        loop {
+                            let first = rx.recv().await;
+                            let Some(first) = first else { break };
+                            let mut batch = vec![first];
+                            let deadline = tokio::time::Instant::now()
+                                + std::time::Duration::from_millis(300);
+                            loop {
+                                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                                    Ok(Some(e)) => {
+                                        batch.push(e);
+                                        if batch.len() >= 8 { break; }
+                                    }
+                                    _ => break,
+                                }
                             }
-                            _ => break,
+                            let _ = output.send(Message::QueriesReceived(id, batch)).await;
                         }
-                    }
-                    let _ = output.send(Message::QueriesReceived(batch)).await;
-                }
+                    }))
             })
-        });
+            .collect();
 
         if self.sidebar_dragging {
             let drag_sub = iced::event::listen_with(|event, _status, _window| {
@@ -301,9 +329,11 @@ impl App {
                     _ => None,
                 }
             });
-            Subscription::batch([data_sub, drag_sub])
+            let mut all = data_subs;
+            all.push(drag_sub);
+            Subscription::batch(all)
         } else {
-            data_sub
+            Subscription::batch(data_subs)
         }
     }
 }
