@@ -1,5 +1,5 @@
 use iced::{
-    widget::{button, column, container, pick_list, row, text, text_input},
+    widget::{button, column, container, mouse_area, pick_list, row, text, text_input},
     Alignment, Border, Color, Element, Length, Padding,
 };
 use crate::theme::Palette;
@@ -588,6 +588,8 @@ pub fn dialog_view<Msg: Clone + 'static>(
         ..Default::default()
     };
 
+    let bg2 = palette.bg2;
+
     let modal = container(
         column![
             header,
@@ -602,24 +604,33 @@ pub fn dialog_view<Msg: Clone + 'static>(
     )
     .width(700)
     .style(move |_| container::Style {
-        background: Some(iced::Background::Color(bg)),
-        border: Border { color: border, width: 1.0, radius: 8.0.into() },
+        background: Some(iced::Background::Color(bg2)),
+        border: Border { color: ok, width: 1.0, radius: 8.0.into() },
         ..Default::default()
     });
 
-    // ── Scrim + centered modal ────────────────────────────────────────────────
-    let scrim_color = Color { r: 0.0, g: 0.0, b: 0.0, a: 0.6 };
+    // Inner mouse_area absorbs clicks inside the modal so they don't
+    // propagate to the outer scrim mouse_area and trigger DialogCancel.
+    let modal_absorber = mouse_area(modal)
+        .on_press(on_msg(ConnectionsMsg::DialogNoop));
 
-    container(modal)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .align_x(iced::alignment::Horizontal::Center)
-        .align_y(iced::alignment::Vertical::Center)
-        .style(move |_| container::Style {
-            background: Some(iced::Background::Color(scrim_color)),
-            ..Default::default()
-        })
-        .into()
+    // ── Scrim + centered modal ────────────────────────────────────────────────
+    // Outer mouse_area: clicking the scrim outside the modal closes the dialog.
+    let scrim_color = Color { r: 0.0, g: 0.0, b: 0.0, a: 0.65 };
+
+    mouse_area(
+        container(modal_absorber)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(iced::alignment::Horizontal::Center)
+            .align_y(iced::alignment::Vertical::Center)
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(scrim_color)),
+                ..Default::default()
+            })
+    )
+    .on_press(on_msg(ConnectionsMsg::DialogCancel))
+    .into()
 }
 
 #[cfg(test)]

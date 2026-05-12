@@ -82,6 +82,7 @@ pub enum ConnectionsMsg {
     DialogBack,
     DialogDone,
     DialogCancel,
+    DialogNoop,
 }
 
 // ── Panel view ────────────────────────────────────────────────────────────────
