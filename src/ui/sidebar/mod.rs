@@ -1,8 +1,10 @@
 pub mod clients;
 pub mod collections;
+pub mod connection_state;
 pub mod connections;
 pub mod databases;
 pub mod saved_views;
+pub use connection_state::ConnectionState;
 
 pub use clients::{clients_panel, ClientItem, ClientsMsg};
 pub use collections::CollectionItem;
