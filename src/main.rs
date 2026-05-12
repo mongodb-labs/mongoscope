@@ -10,6 +10,7 @@ use ui::{
     dialog::dialog_view,
     feed::{FeedMsg, FEED_SCROLL_ID},
     inspector::{InspectorMsg, InspectorState},
+    mcp_panel::{McpMsg, McpPanelState, McpServerState},
     sidebar::{connections::ConnectionsMsg, SidebarMsg, SidebarState},
     statusbar::{statusbar, StatusInfo},
     topbar::{conn_bar::ConnInfo, topbar, MenuMsg},
@@ -28,6 +29,7 @@ enum Message {
     SidebarResizeStart,
     SidebarResizeMove(f32),
     SidebarResizeEnd,
+    Mcp(McpMsg),
 }
 
 struct App {
@@ -37,6 +39,7 @@ struct App {
     density: Density,
     sidebar_width: f32,
     sidebar_dragging: bool,
+    mcp_panel: McpPanelState,
 }
 
 impl App {
@@ -48,6 +51,7 @@ impl App {
             density: Density::Compact,
             sidebar_width: 220.0,
             sidebar_dragging: false,
+            mcp_panel: McpPanelState::new(),
         };
         if app.sidebar.connections.is_empty() {
             app.sidebar.dialog = Some(ui::dialog::ConnectionDialogState::new());
@@ -161,6 +165,38 @@ impl App {
                 self.sidebar_dragging = false;
                 Task::none()
             }
+            Message::Mcp(m) => match m {
+                McpMsg::Toggle => {
+                    self.mcp_panel.toggle();
+                    Task::none()
+                }
+                McpMsg::StartStop => {
+                    if self.mcp_panel.begin_start() {
+                        Task::perform(
+                            async { tokio::time::sleep(Duration::from_millis(800)).await },
+                            |_| Message::Mcp(McpMsg::Started),
+                        )
+                    } else {
+                        self.mcp_panel.stop();
+                        Task::none()
+                    }
+                }
+                McpMsg::Started => {
+                    self.mcp_panel.on_started(3717);
+                    Task::none()
+                }
+                McpMsg::CopyConfig => {
+                    if let McpServerState::Running { port } = self.mcp_panel.server {
+                        let snippet = format!(
+                            "\"mongoscope\": {{\n  \"url\": \"http://localhost:{port}/mcp\"\n}}"
+                        );
+                        iced::clipboard::write::<Message>(snippet)
+                    } else {
+                        Task::none()
+                    }
+                }
+                McpMsg::Noop => Task::none(),
+            },
         }
     }
 
@@ -184,6 +220,8 @@ impl App {
             capturing,
             |m| Message::Menu(m),
             Message::ToggleCapture,
+            &self.mcp_panel.server,
+            Message::Mcp(McpMsg::Toggle),
             &palette,
         );
 
@@ -250,13 +288,27 @@ impl App {
         .width(Length::Fill)
         .height(Length::Fill);
 
-        let body = row![
+        let body_row = row![
             sidebar_el,
             resize_handle,
             main_pane,
         ]
         .spacing(0)
         .height(Length::Fill);
+
+        let body: Element<Message> = if self.mcp_panel.open {
+            iced::widget::stack![
+                body_row,
+                ui::mcp_panel::overlay_view(
+                    &self.mcp_panel,
+                    |m| Message::Mcp(m),
+                    &palette,
+                ),
+            ]
+            .into()
+        } else {
+            body_row.into()
+        };
 
         let base: Element<Message> = container(
             column![top, body, status].spacing(0)
