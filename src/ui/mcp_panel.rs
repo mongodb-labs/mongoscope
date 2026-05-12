@@ -106,15 +106,15 @@ fn port_chip<Msg: 'static>(port: u16, palette: &Palette) -> Element<'static, Msg
     .into()
 }
 
-fn tool_row_el<Msg: 'static>(name: &str, desc: &str, palette: &Palette) -> Element<'static, Msg> {
+fn tool_row_el<'a, Msg: 'a>(name: &'a str, desc: &'a str, palette: &Palette) -> Element<'a, Msg> {
     let name_color = palette.op_read;
     let desc_color = palette.fg_dim2;
     column![
-        text(name.to_owned())
+        text(name)
             .size(11)
             .color(name_color)
             .font(Font::MONOSPACE),
-        text(desc.to_owned())
+        text(desc)
             .size(10)
             .color(desc_color)
             .font(Font::MONOSPACE),

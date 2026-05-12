@@ -18,19 +18,19 @@ impl IconSize {
     }
 }
 
-pub fn icon_button<Msg: Clone + 'static>(
-    label: &str,
+pub fn icon_button<'a, Msg: Clone + 'a>(
+    label: &'a str,
     size: IconSize,
     msg: Msg,
     palette: &Palette,
-) -> Element<'static, Msg> {
+) -> Element<'a, Msg> {
     let dim = size.px();
     let bg = palette.bg;
     let border_c = palette.border;
     let fg = palette.fg_dim;
 
     button(
-        iced::widget::text(label.to_string())
+        iced::widget::text(label)
             .size(11)
             .color(fg)
             .align_x(iced::alignment::Horizontal::Center)

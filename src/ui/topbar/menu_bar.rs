@@ -13,14 +13,13 @@ pub enum MenuMsg {
     Help,
 }
 
-fn menu_btn<Msg: Clone + 'static>(
-    label: &str,
+fn menu_btn<'a, Msg: Clone + 'a>(
+    label: &'a str,
     msg: Msg,
     palette: &Palette,
-) -> Element<'static, Msg> {
+) -> Element<'a, Msg> {
     let fg = palette.fg;
     let bg_hover = palette.bg_hover;
-    let label = label.to_string();
 
     button(text(label).size(12).color(fg).font(iced::Font::MONOSPACE))
         .padding(Padding {

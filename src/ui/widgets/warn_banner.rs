@@ -7,14 +7,14 @@ use iced::{
     Border, Color, Element, Length, Padding,
 };
 
-pub fn warn_banner<Msg: Clone + 'static>(
-    title: &str,
-    subtitle: &str,
-    action_label: &str,
+pub fn warn_banner<'a, Msg: Clone + 'a>(
+    title: &'a str,
+    subtitle: &'a str,
+    action_label: &'a str,
     action_msg: Msg,
     palette: &Palette,
     fs: f32,
-) -> Element<'static, Msg> {
+) -> Element<'a, Msg> {
     let bg = Color {
         r: palette.warn.r,
         g: palette.warn.g,
@@ -31,8 +31,8 @@ pub fn warn_banner<Msg: Clone + 'static>(
     let body = row![
         text("◆").size(13).color(palette.warn),
         column![
-            text(title.to_string()).size(fs).color(palette.warn),
-            text(subtitle.to_string()).size(fs).color(palette.fg_dim),
+            text(title).size(fs).color(palette.warn),
+            text(subtitle).size(fs).color(palette.fg_dim),
         ]
         .spacing(2)
         .width(Length::Fill),
