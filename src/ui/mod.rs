@@ -1,3 +1,4 @@
+pub mod dialog;
 pub mod feed;
 pub mod inspector;
 pub mod sidebar;
