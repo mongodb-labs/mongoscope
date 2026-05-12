@@ -113,8 +113,7 @@ pub fn databases_panel<Msg: Clone + 'static>(
                     let is_coll_active = coll.active;
                     let coll_bg = if is_coll_active { bg_sel } else { bg0 };
                     let coll_name = coll.name.clone();
-                    let sub = format!("{} · {}", coll.docs_str(), coll.size);
-                    let idx = format!("{}i", coll.idx);
+                    let sub = coll.requests_str();
                     let db_for_coll = db.name.clone();
                     let coll_name_click = coll_name.clone();
 
@@ -136,10 +135,6 @@ pub fn databases_panel<Msg: Clone + 'static>(
                             ]
                             .spacing(1)
                             .width(Length::Fill),
-                            text(idx)
-                                .size(9)
-                                .color(fg_dim)
-                                .font(iced::Font::MONOSPACE),
                         ]
                         .spacing(5)
                         .align_y(iced::Alignment::Center),
@@ -187,9 +182,7 @@ mod tests {
                 .iter()
                 .map(|c| CollectionItem {
                     name: c.to_string(),
-                    docs: 0,
-                    size: "".into(),
-                    idx: 0,
+                    requests: 0,
                     active: false,
                 })
                 .collect(),
