@@ -1,8 +1,8 @@
+use crate::theme::Palette;
 use iced::{
     widget::{button, column, container, mouse_area, row, text},
     Alignment, Background, Border, Color, Element, Font, Length, Padding,
 };
-use crate::theme::Palette;
 
 pub const MOCK_MCP_PORT: u16 = 3717;
 
@@ -30,7 +30,10 @@ pub enum McpMsg {
 
 impl McpPanelState {
     pub fn new() -> Self {
-        Self { open: false, server: McpServerState::Stopped }
+        Self {
+            open: false,
+            server: McpServerState::Stopped,
+        }
     }
 
     pub fn toggle(&mut self) {
@@ -66,23 +69,38 @@ fn status_dot<Msg: 'static>(color: Color) -> Element<'static, Msg> {
         .height(7)
         .style(move |_| container::Style {
             background: Some(Background::Color(color)),
-            border: Border { radius: 3.5.into(), ..Default::default() },
+            border: Border {
+                radius: 3.5.into(),
+                ..Default::default()
+            },
             ..Default::default()
         })
         .into()
 }
 
 fn port_chip<Msg: 'static>(port: u16, palette: &Palette) -> Element<'static, Msg> {
-    let ok  = palette.ok;
-    let bg  = Color { a: 0.15, ..ok };
+    let ok = palette.ok;
+    let bg = Color { a: 0.15, ..ok };
     let bdr = Color { a: 0.40, ..ok };
     container(
-        text(format!(":{port}")).size(10).color(ok).font(Font::MONOSPACE)
+        text(format!(":{port}"))
+            .size(10)
+            .color(ok)
+            .font(Font::MONOSPACE),
     )
-    .padding(Padding { top: 2.0, bottom: 2.0, left: 8.0, right: 8.0 })
+    .padding(Padding {
+        top: 2.0,
+        bottom: 2.0,
+        left: 8.0,
+        right: 8.0,
+    })
     .style(move |_| container::Style {
         background: Some(Background::Color(bg)),
-        border: Border { color: bdr, width: 1.0, radius: 3.0.into() },
+        border: Border {
+            color: bdr,
+            width: 1.0,
+            radius: 3.0.into(),
+        },
         ..Default::default()
     })
     .into()
@@ -92,8 +110,14 @@ fn tool_row_el<Msg: 'static>(name: &str, desc: &str, palette: &Palette) -> Eleme
     let name_color = palette.op_read;
     let desc_color = palette.fg_dim2;
     column![
-        text(name.to_owned()).size(11).color(name_color).font(Font::MONOSPACE),
-        text(desc.to_owned()).size(10).color(desc_color).font(Font::MONOSPACE),
+        text(name.to_owned())
+            .size(11)
+            .color(name_color)
+            .font(Font::MONOSPACE),
+        text(desc.to_owned())
+            .size(10)
+            .color(desc_color)
+            .font(Font::MONOSPACE),
     ]
     .spacing(2)
     .into()
@@ -104,48 +128,59 @@ fn config_section_view<Msg: Clone + 'static>(
     on_msg: impl Fn(McpMsg) -> Msg + 'static + Copy,
     palette: &Palette,
 ) -> Element<'static, Msg> {
-    let fg_dim  = palette.fg_dim;
+    let fg_dim = palette.fg_dim;
     let fg_dim2 = palette.fg_dim2;
-    let bg1     = palette.bg1;
+    let bg1 = palette.bg1;
     let border2 = palette.border2;
 
     // sec_label helper (duplicated here for independence from overlay_view)
     let sec_label = |s: &'static str| -> Element<'static, Msg> {
-        container(
-            text(s).size(9).color(fg_dim2).font(Font::MONOSPACE)
-        )
-        .width(Length::Fill)
-        .padding(Padding { top: 0.0, bottom: 4.0, left: 0.0, right: 0.0 })
-        .into()
+        container(text(s).size(9).color(fg_dim2).font(Font::MONOSPACE))
+            .width(Length::Fill)
+            .padding(Padding {
+                top: 0.0,
+                bottom: 4.0,
+                left: 0.0,
+                right: 0.0,
+            })
+            .into()
     };
 
     if let McpServerState::Running { port } = &state.server {
         let p = *port;
-        let config_text = format!(
-            "\"mongoscope\": {{\n  \"url\": \"http://localhost:{p}/mcp\"\n}}"
-        );
+        let config_text =
+            format!("\"mongoscope\": {{\n  \"url\": \"http://localhost:{p}/mcp\"\n}}");
         let code_block = container(
-            text(config_text).size(10).color(fg_dim).font(Font::MONOSPACE)
+            text(config_text)
+                .size(10)
+                .color(fg_dim)
+                .font(Font::MONOSPACE),
         )
         .width(Length::Fill)
         .padding(Padding::from([10, 12]))
         .style(move |_| container::Style {
             background: Some(Background::Color(bg1)),
-            border: Border { color: border2, width: 1.0, radius: 4.0.into() },
+            border: Border {
+                color: border2,
+                width: 1.0,
+                radius: 4.0.into(),
+            },
             ..Default::default()
         });
 
-        let copy_btn = button(
-            text("Copy").size(10).color(fg_dim2).font(Font::MONOSPACE)
-        )
-        .on_press(on_msg(McpMsg::CopyConfig))
-        .padding(Padding::from([4, 10]))
-        .style(move |_, _| button::Style {
-            background: Some(Background::Color(bg1)),
-            border: Border { color: border2, width: 1.0, radius: 3.0.into() },
-            text_color: fg_dim2,
-            ..Default::default()
-        });
+        let copy_btn = button(text("Copy").size(10).color(fg_dim2).font(Font::MONOSPACE))
+            .on_press(on_msg(McpMsg::CopyConfig))
+            .padding(Padding::from([4, 10]))
+            .style(move |_, _| button::Style {
+                background: Some(Background::Color(bg1)),
+                border: Border {
+                    color: border2,
+                    width: 1.0,
+                    radius: 3.0.into(),
+                },
+                text_color: fg_dim2,
+                ..Default::default()
+            });
 
         column![
             sec_label("CONFIGURE IN MCP.JSON"),
@@ -168,7 +203,11 @@ fn config_section_view<Msg: Clone + 'static>(
         .padding(Padding::from([14, 12]))
         .style(move |_| container::Style {
             background: Some(Background::Color(bg1)),
-            border: Border { color: border2, width: 1.0, radius: 4.0.into() },
+            border: Border {
+                color: border2,
+                width: 1.0,
+                radius: 4.0.into(),
+            },
             ..Default::default()
         })
         .into()
@@ -180,47 +219,58 @@ fn footer_view<Msg: Clone + 'static>(
     on_msg: impl Fn(McpMsg) -> Msg + 'static + Copy,
     palette: &Palette,
 ) -> Element<'static, Msg> {
-    let bg1    = palette.bg1;
+    let bg1 = palette.bg1;
     let fg_dim = palette.fg_dim;
     let border = palette.border;
-    let ok     = palette.ok;
-    let warn   = palette.warn;
+    let ok = palette.ok;
+    let warn = palette.warn;
 
     let (btn_text, btn_bg, btn_fg, btn_border, btn_enabled) = match &state.server {
         McpServerState::Stopped => (
-            "Start server", ok, palette.accent_fg, Color::TRANSPARENT, true
+            "Start server",
+            ok,
+            palette.accent_fg,
+            Color::TRANSPARENT,
+            true,
         ),
-        McpServerState::Starting => (
-            "Starting…", bg1, warn, warn, false
-        ),
-        McpServerState::Running { .. } => (
-            "Stop server", bg1, fg_dim, border, true
-        ),
+        McpServerState::Starting => ("Starting…", bg1, warn, warn, false),
+        McpServerState::Running { .. } => ("Stop server", bg1, fg_dim, border, true),
     };
 
-    let mut footer_btn = button(
-        text(btn_text).size(11).color(btn_fg).font(Font::MONOSPACE)
-    )
-    .padding(Padding { top: 7.0, bottom: 7.0, left: 14.0, right: 14.0 })
-    .style(move |_, _| button::Style {
-        background: Some(Background::Color(btn_bg)),
-        border: Border { color: btn_border, width: 1.0, radius: 3.0.into() },
-        text_color: btn_fg,
-        ..Default::default()
-    });
+    let mut footer_btn = button(text(btn_text).size(11).color(btn_fg).font(Font::MONOSPACE))
+        .padding(Padding {
+            top: 7.0,
+            bottom: 7.0,
+            left: 14.0,
+            right: 14.0,
+        })
+        .style(move |_, _| button::Style {
+            background: Some(Background::Color(btn_bg)),
+            border: Border {
+                color: btn_border,
+                width: 1.0,
+                radius: 3.0.into(),
+            },
+            text_color: btn_fg,
+            ..Default::default()
+        });
 
     if btn_enabled {
         footer_btn = footer_btn.on_press(on_msg(McpMsg::StartStop));
     }
 
     container(footer_btn)
-    .width(Length::Fill)
-    .padding(Padding::from([12, 16]))
-    .style(move |_| container::Style {
-        border: Border { color: border, width: 1.0, radius: 0.0.into() },
-        ..Default::default()
-    })
-    .into()
+        .width(Length::Fill)
+        .padding(Padding::from([12, 16]))
+        .style(move |_| container::Style {
+            border: Border {
+                color: border,
+                width: 1.0,
+                radius: 0.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
 }
 
 pub fn overlay_view<Msg: Clone + 'static>(
@@ -228,23 +278,26 @@ pub fn overlay_view<Msg: Clone + 'static>(
     on_msg: impl Fn(McpMsg) -> Msg + 'static + Copy,
     palette: &Palette,
 ) -> Element<'static, Msg> {
-    let bg2     = palette.bg2;
-    let fg      = palette.fg;
+    let bg2 = palette.bg2;
+    let fg = palette.fg;
     let fg_dim2 = palette.fg_dim2;
-    let border  = palette.border;
-    let ok      = palette.ok;
-    let warn    = palette.warn;
+    let border = palette.border;
+    let ok = palette.ok;
+    let warn = palette.warn;
 
     // ── Status row ────────────────────────────────────────────────────────────
     let (dot_color, status_label, status_color) = match &state.server {
-        McpServerState::Stopped        => (palette.fg_dim2, "Stopped",   palette.fg_dim2),
-        McpServerState::Starting       => (warn,            "Starting…", warn),
-        McpServerState::Running { .. } => (ok,              "Running",   ok),
+        McpServerState::Stopped => (palette.fg_dim2, "Stopped", palette.fg_dim2),
+        McpServerState::Starting => (warn, "Starting…", warn),
+        McpServerState::Running { .. } => (ok, "Running", ok),
     };
 
     let mut status_row_content = row![
         status_dot(dot_color),
-        text(status_label).size(11).color(status_color).font(Font::MONOSPACE),
+        text(status_label)
+            .size(11)
+            .color(status_color)
+            .font(Font::MONOSPACE),
     ]
     .spacing(7)
     .align_y(Alignment::Center);
@@ -254,17 +307,15 @@ pub fn overlay_view<Msg: Clone + 'static>(
     }
 
     // ── Header ────────────────────────────────────────────────────────────────
-    let close_btn = button(
-        text("✕").size(12).color(fg_dim2).font(Font::MONOSPACE)
-    )
-    .on_press(on_msg(McpMsg::Toggle))
-    .padding(Padding::from([2, 6]))
-    .style(move |_, _| button::Style {
-        background: None,
-        border: Border::default(),
-        text_color: fg_dim2,
-        ..Default::default()
-    });
+    let close_btn = button(text("✕").size(12).color(fg_dim2).font(Font::MONOSPACE))
+        .on_press(on_msg(McpMsg::Toggle))
+        .padding(Padding::from([2, 6]))
+        .style(move |_, _| button::Style {
+            background: None,
+            border: Border::default(),
+            text_color: fg_dim2,
+            ..Default::default()
+        });
 
     let header = container(
         row![
@@ -279,24 +330,44 @@ pub fn overlay_view<Msg: Clone + 'static>(
         .align_y(Alignment::Start),
     )
     .width(Length::Fill)
-    .padding(Padding { top: 14.0, bottom: 12.0, left: 16.0, right: 16.0 });
+    .padding(Padding {
+        top: 14.0,
+        bottom: 12.0,
+        left: 16.0,
+        right: 16.0,
+    });
 
     // ── Section label helper ──────────────────────────────────────────────────
     let sec_label = |s: &'static str| -> Element<'static, Msg> {
-        container(
-            text(s).size(9).color(fg_dim2).font(Font::MONOSPACE)
-        )
-        .width(Length::Fill)
-        .padding(Padding { top: 0.0, bottom: 4.0, left: 0.0, right: 0.0 })
-        .into()
+        container(text(s).size(9).color(fg_dim2).font(Font::MONOSPACE))
+            .width(Length::Fill)
+            .padding(Padding {
+                top: 0.0,
+                bottom: 4.0,
+                left: 0.0,
+                right: 0.0,
+            })
+            .into()
     };
 
     // ── Tools section ─────────────────────────────────────────────────────────
     let tools = column![
         sec_label("AVAILABLE TOOLS"),
-        tool_row_el("list_requests",     "Get all captured requests & responses", palette),
-        tool_row_el("get_request",       "Fetch full details of a request by ID", palette),
-        tool_row_el("highlight_request", "Select + highlight a row in the feed UI", palette),
+        tool_row_el(
+            "list_requests",
+            "Get all captured requests & responses",
+            palette
+        ),
+        tool_row_el(
+            "get_request",
+            "Fetch full details of a request by ID",
+            palette
+        ),
+        tool_row_el(
+            "highlight_request",
+            "Select + highlight a row in the feed UI",
+            palette
+        ),
     ]
     .spacing(8);
 
@@ -304,12 +375,10 @@ pub fn overlay_view<Msg: Clone + 'static>(
     let config_section = config_section_view(state, on_msg, palette);
 
     // ── Body ──────────────────────────────────────────────────────────────────
-    let body = container(
-        column![tools, config_section].spacing(18)
-    )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .padding(Padding::from([14, 16]));
+    let body = container(column![tools, config_section].spacing(18))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(Padding::from([14, 16]));
 
     // ── Footer button ─────────────────────────────────────────────────────────
     let footer = footer_view(state, on_msg, palette);
@@ -323,10 +392,12 @@ pub fn overlay_view<Msg: Clone + 'static>(
     let drawer_content = column![
         header,
         container(iced::widget::Space::new(Length::Fill, 1.0))
-            .width(Length::Fill).style(divider_style),
+            .width(Length::Fill)
+            .style(divider_style),
         body,
         container(iced::widget::Space::new(Length::Fill, 1.0))
-            .width(Length::Fill).style(divider_style),
+            .width(Length::Fill)
+            .style(divider_style),
         footer,
     ]
     .spacing(0)
@@ -338,7 +409,11 @@ pub fn overlay_view<Msg: Clone + 'static>(
             .height(Length::Fill)
             .style(move |_| container::Style {
                 background: Some(Background::Color(bg2)),
-                border: Border { color: border, width: 1.0, radius: 0.0.into() },
+                border: Border {
+                    color: border,
+                    width: 1.0,
+                    radius: 0.0.into(),
+                },
                 ..Default::default()
             }),
     )
@@ -350,7 +425,12 @@ pub fn overlay_view<Msg: Clone + 'static>(
         .align_x(iced::alignment::Horizontal::Right);
 
     // ── Backdrop ──────────────────────────────────────────────────────────────
-    let scrim = Color { r: 0.0, g: 0.0, b: 0.0, a: 0.65 };
+    let scrim = Color {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.65,
+    };
 
     let backdrop = mouse_area(
         container(iced::widget::Space::new(Length::Fill, Length::Fill))
@@ -380,8 +460,10 @@ mod tests {
     #[test]
     fn toggle_opens_and_closes() {
         let mut p = McpPanelState::new();
-        p.toggle(); assert!(p.open);
-        p.toggle(); assert!(!p.open);
+        p.toggle();
+        assert!(p.open);
+        p.toggle();
+        assert!(!p.open);
     }
 
     #[test]
@@ -406,7 +488,12 @@ mod tests {
         let mut p = McpPanelState::new();
         p.begin_start();
         p.on_started(MOCK_MCP_PORT);
-        assert_eq!(p.server, McpServerState::Running { port: MOCK_MCP_PORT });
+        assert_eq!(
+            p.server,
+            McpServerState::Running {
+                port: MOCK_MCP_PORT
+            }
+        );
     }
 
     #[test]

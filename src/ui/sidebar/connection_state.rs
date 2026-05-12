@@ -1,8 +1,8 @@
 use crate::data::model::QueryEntry;
 use crate::ui::feed::FeedState;
 use crate::ui::sidebar::clients::{app_color_for, ClientItem};
-use crate::ui::sidebar::connections::ConnectionItem;
 use crate::ui::sidebar::collections::CollectionItem;
+use crate::ui::sidebar::connections::ConnectionItem;
 use crate::ui::sidebar::databases::DatabaseItem;
 
 pub struct ConnectionState {
@@ -25,7 +25,11 @@ impl ConnectionState {
     }
 
     fn stub_collection(name: String) -> CollectionItem {
-        CollectionItem { name, requests: 0, active: false }
+        CollectionItem {
+            name,
+            requests: 0,
+            active: false,
+        }
     }
 
     pub fn register_entries(&mut self, entries: &[QueryEntry]) {
@@ -33,7 +37,11 @@ impl ConnectionState {
             let app_name = entry.app.to_string();
             if !self.clients.iter().any(|c| c.name == app_name) {
                 let color = app_color_for(&app_name);
-                self.clients.push(ClientItem { name: app_name, color, active: false });
+                self.clients.push(ClientItem {
+                    name: app_name,
+                    color,
+                    active: false,
+                });
             }
             let db_name = entry.db.to_string();
             let coll_name = entry.coll.to_string();

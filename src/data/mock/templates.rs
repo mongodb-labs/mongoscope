@@ -1,8 +1,8 @@
-use indexmap::IndexMap;
 use crate::data::{
     model::{BsonDoc, BsonVal, Op, Plan},
     types::IndexName,
 };
+use indexmap::IndexMap;
 
 pub struct Template {
     pub op: Op,
@@ -27,7 +27,9 @@ pub fn all_templates() -> Vec<Template> {
             db: "shop",
             coll: "orders",
             app: "checkout-svc",
-            plan: Some(Plan::IxScan(IndexName::try_new("userId_1_createdAt_-1").unwrap())),
+            plan: Some(Plan::IxScan(
+                IndexName::try_new("userId_1_createdAt_-1").unwrap(),
+            )),
             index: Some("userId_1_createdAt_-1"),
             docs_examined: Some(20),
             docs_returned: Some(20),
@@ -72,7 +74,9 @@ pub fn all_templates() -> Vec<Template> {
             db: "shop",
             coll: "products",
             app: "catalog-api",
-            plan: Some(Plan::IxScan(IndexName::try_new("category_1_popularity_-1").unwrap())),
+            plan: Some(Plan::IxScan(
+                IndexName::try_new("category_1_popularity_-1").unwrap(),
+            )),
             index: Some("category_1_popularity_-1"),
             docs_examined: Some(612),
             docs_returned: Some(40),
@@ -132,7 +136,9 @@ pub fn all_templates() -> Vec<Template> {
             db: "shop",
             coll: "reviews",
             app: "catalog-api",
-            plan: Some(Plan::IxScan(IndexName::try_new("productId_1_helpful_-1").unwrap())),
+            plan: Some(Plan::IxScan(
+                IndexName::try_new("productId_1_helpful_-1").unwrap(),
+            )),
             index: Some("productId_1_helpful_-1"),
             docs_examined: Some(47),
             docs_returned: Some(10),
@@ -147,7 +153,9 @@ pub fn all_templates() -> Vec<Template> {
             db: "shop",
             coll: "products",
             app: "admin-portal",
-            plan: Some(Plan::IxScanLookup(IndexName::try_new("category_1").unwrap())),
+            plan: Some(Plan::IxScanLookup(
+                IndexName::try_new("category_1").unwrap(),
+            )),
             index: Some("category_1"),
             docs_examined: Some(18_422),
             docs_returned: Some(3_201),
@@ -177,7 +185,9 @@ pub fn all_templates() -> Vec<Template> {
             db: "shop",
             coll: "inventory",
             app: "checkout-svc",
-            plan: Some(Plan::IxScan(IndexName::try_new("warehouse_1_sku_1").unwrap())),
+            plan: Some(Plan::IxScan(
+                IndexName::try_new("warehouse_1_sku_1").unwrap(),
+            )),
             index: Some("warehouse_1_sku_1"),
             docs_examined: Some(2),
             docs_returned: Some(2),
@@ -301,7 +311,11 @@ pub fn build_filter(keys: &[&str]) -> Option<BsonDoc> {
     if keys.is_empty() {
         return None;
     }
-    Some(keys.iter().map(|k| (k.to_string(), BsonVal::Str("…".into()))).collect())
+    Some(
+        keys.iter()
+            .map(|k| (k.to_string(), BsonVal::Str("…".into())))
+            .collect(),
+    )
 }
 
 pub fn build_pipeline(stages: &[&str]) -> Option<Vec<BsonDoc>> {

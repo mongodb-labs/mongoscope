@@ -8,10 +8,13 @@ pub use density_lane::density_lane;
 pub use filter::{FilterMsg, FilterState};
 pub use table::{table_header, table_view};
 
-use iced::{widget::{column, lazy, scrollable}, Border, Element, Length};
 use crate::{
     data::{model::QueryEntry, types::QueryId},
     theme::{Density, Palette},
+};
+use iced::{
+    widget::{column, lazy, scrollable},
+    Border, Element, Length,
 };
 
 pub const FEED_SCROLL_ID: &str = "feed_table";
@@ -34,10 +37,10 @@ pub struct FeedState {
     pub paused: bool,
     pub scroll_locked: bool,
     pub frozen_entries: Vec<QueryEntry>,
-    pub pending_scroll_to: u32,   // scroll_to(y=0) tasks in flight
-    pub pending_scroll_by: u32,   // scroll_by(dy) tasks in flight
-    pub scroll_y: f32,            // latest real scroll position
-    pub prev_scroll_y: f32,       // scroll position before that (direction detection)
+    pub pending_scroll_to: u32, // scroll_to(y=0) tasks in flight
+    pub pending_scroll_by: u32, // scroll_by(dy) tasks in flight
+    pub scroll_y: f32,          // latest real scroll position
+    pub prev_scroll_y: f32,     // scroll position before that (direction detection)
 }
 
 impl FeedState {
@@ -59,7 +62,9 @@ impl FeedState {
     }
 
     pub fn push_entry(&mut self, entry: QueryEntry) -> bool {
-        if self.paused { return false; }
+        if self.paused {
+            return false;
+        }
         self.now_ms = entry.t_ms.into_inner();
         self.buckets.push(&entry, self.now_ms);
         self.entries.insert(0, entry);
@@ -114,10 +119,9 @@ impl FeedState {
     }
 
     pub fn visible_entries(&self) -> Vec<&QueryEntry> {
-        self.entries.iter()
-            .filter(|e| {
-                self.filter.kind.matches(&e.op) && self.filter.expr.matches(e)
-            })
+        self.entries
+            .iter()
+            .filter(|e| self.filter.kind.matches(&e.op) && self.filter.expr.matches(e))
             .collect()
     }
 
@@ -135,8 +139,12 @@ impl FeedState {
         let fg_dim2 = palette.fg_dim2;
 
         let take_n = if self.scroll_locked { 500 } else { 150 };
-        let visible: Vec<QueryEntry> = self.visible_entries()
-            .into_iter().take(take_n).cloned().collect();
+        let visible: Vec<QueryEntry> = self
+            .visible_entries()
+            .into_iter()
+            .take(take_n)
+            .cloned()
+            .collect();
         let selected = self.selected;
 
         let total_count = self.entries.len();
@@ -146,7 +154,13 @@ impl FeedState {
 
         let table_inner = lazy(dep, move |_| {
             let refs: Vec<&QueryEntry> = visible.iter().collect();
-            table_view(&refs, selected, move |id| on_msg(FeedMsg::SelectEntry(id)), &palette, fs)
+            table_view(
+                &refs,
+                selected,
+                move |id| on_msg(FeedMsg::SelectEntry(id)),
+                &palette,
+                fs,
+            )
         });
 
         let header = table_header::<Msg>(&palette, fs);
@@ -168,7 +182,10 @@ impl FeedState {
                         border: Border::default(),
                         scroller: scrollable::Scroller {
                             color: iced::Color { a, ..fg_dim2 },
-                            border: Border { radius: 4.0.into(), ..Default::default() },
+                            border: Border {
+                                radius: 4.0.into(),
+                                ..Default::default()
+                            },
                         },
                     },
                     horizontal_rail: scrollable::Rail {

@@ -1,8 +1,8 @@
+use crate::{theme::Palette, ui::feed::filter::parser::FilterExpr};
 use iced::{
     widget::{button, container, row, text, text_input},
     Border, Element, Length, Padding,
 };
-use crate::{theme::Palette, ui::feed::filter::parser::FilterExpr};
 
 pub fn search_input<Msg: Clone + 'static>(
     value: String,
@@ -34,15 +34,17 @@ pub fn search_input<Msg: Clone + 'static>(
                         .size(11)
                         .color(fg)
                         .font(iced::Font::MONOSPACE),
-                    text("×")
-                        .size(11)
-                        .color(fg_dim)
-                        .font(iced::Font::MONOSPACE),
+                    text("×").size(11).color(fg_dim).font(iced::Font::MONOSPACE),
                 ]
                 .spacing(4)
                 .align_y(iced::Alignment::Center),
             )
-            .padding(Padding { top: 2.0, bottom: 2.0, left: 6.0, right: 6.0 })
+            .padding(Padding {
+                top: 2.0,
+                bottom: 2.0,
+                left: 6.0,
+                right: 6.0,
+            })
             .on_press(on_change(FilterExpr::remove_token(&value_clone, &tok)))
             .style(move |_, _| button::Style {
                 background: Some(iced::Background::Color(bg_sel)),
@@ -60,7 +62,12 @@ pub fn search_input<Msg: Clone + 'static>(
     let input_el = container(
         text_input(placeholder, &remaining)
             .size(12)
-            .padding(Padding { top: 5.0, bottom: 5.0, left: 10.0, right: 10.0 })
+            .padding(Padding {
+                top: 5.0,
+                bottom: 5.0,
+                left: 10.0,
+                right: 10.0,
+            })
             .on_input(move |new_remaining: String| {
                 let new_full = if chips_prefix.is_empty() {
                     new_remaining
@@ -91,11 +98,7 @@ pub fn search_input<Msg: Clone + 'static>(
     let mut contents: Vec<Element<'static, Msg>> = chip_els;
     contents.push(input_el.into());
 
-    container(
-        row(contents)
-            .spacing(4)
-            .align_y(iced::Alignment::Center),
-    )
-    .width(Length::Fill)
-    .into()
+    container(row(contents).spacing(4).align_y(iced::Alignment::Center))
+        .width(Length::Fill)
+        .into()
 }

@@ -1,5 +1,8 @@
-use iced::{widget::{button, container, row, text}, Border, Element, Padding};
 use crate::theme::Palette;
+use iced::{
+    widget::{button, container, row, text},
+    Border, Element, Padding,
+};
 
 pub fn capture_indicator<Msg: Clone + 'static>(
     capturing: bool,
@@ -20,18 +23,32 @@ pub fn capture_indicator<Msg: Clone + 'static>(
                 .height(6)
                 .style(move |_| container::Style {
                     background: Some(iced::Background::Color(accent_fg)),
-                    border: Border { radius: 3.0.into(), ..Default::default() },
+                    border: Border {
+                        radius: 3.0.into(),
+                        ..Default::default()
+                    },
                     ..Default::default()
                 }),
-            text("CAPTURING").size(10).color(accent_fg).font(iced::Font::MONOSPACE),
+            text("CAPTURING")
+                .size(10)
+                .color(accent_fg)
+                .font(iced::Font::MONOSPACE),
         ]
         .spacing(4)
         .align_y(iced::Alignment::Center),
     )
-    .padding(Padding { top: 3.0, bottom: 3.0, left: 8.0, right: 8.0 })
+    .padding(Padding {
+        top: 3.0,
+        bottom: 3.0,
+        left: 8.0,
+        right: 8.0,
+    })
     .style(move |_| container::Style {
         background: Some(iced::Background::Color(danger)),
-        border: Border { radius: 10.0.into(), ..Default::default() },
+        border: Border {
+            radius: 10.0.into(),
+            ..Default::default()
+        },
         ..Default::default()
     });
 

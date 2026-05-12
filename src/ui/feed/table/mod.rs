@@ -5,8 +5,11 @@ pub mod row;
 pub use header::table_header;
 pub use row::table_row;
 
+use crate::{
+    data::{model::QueryEntry, types::QueryId},
+    theme::Palette,
+};
 use iced::{widget::column, Element, Length};
-use crate::{data::{model::QueryEntry, types::QueryId}, theme::Palette};
 
 pub fn table_view<Msg: Clone + 'static>(
     entries: &[&QueryEntry],
@@ -15,10 +18,13 @@ pub fn table_view<Msg: Clone + 'static>(
     palette: &Palette,
     fs: f32,
 ) -> Element<'static, Msg> {
-    let rows: Vec<Element<Msg>> = entries.iter().map(|entry| {
-        let is_selected = selected.map_or(false, |id| id == entry.id);
-        table_row(entry, is_selected, on_select, palette, fs)
-    }).collect();
+    let rows: Vec<Element<Msg>> = entries
+        .iter()
+        .map(|entry| {
+            let is_selected = selected == Some(entry.id);
+            table_row(entry, is_selected, on_select, palette, fs)
+        })
+        .collect();
 
     column(rows).spacing(0).width(Length::Fill).into()
 }

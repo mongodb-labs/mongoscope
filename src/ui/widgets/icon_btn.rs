@@ -1,11 +1,21 @@
-use iced::{widget::button, Border, Element, Padding};
+// TODO: remove when real backend is wired up — currently all mock data
+#![allow(dead_code)]
 use crate::theme::Palette;
+use iced::{widget::button, Border, Element, Padding};
 
 #[derive(Debug, Clone, Copy)]
-pub enum IconSize { Normal, Small }
+pub enum IconSize {
+    Normal,
+    Small,
+}
 
 impl IconSize {
-    fn px(self) -> f32 { match self { IconSize::Normal => 24.0, IconSize::Small => 20.0 } }
+    fn px(self) -> f32 {
+        match self {
+            IconSize::Normal => 24.0,
+            IconSize::Small => 20.0,
+        }
+    }
 }
 
 pub fn icon_button<Msg: Clone + 'static>(
@@ -24,7 +34,7 @@ pub fn icon_button<Msg: Clone + 'static>(
             .size(11)
             .color(fg)
             .align_x(iced::alignment::Horizontal::Center)
-            .align_y(iced::alignment::Vertical::Center)
+            .align_y(iced::alignment::Vertical::Center),
     )
     .width(dim)
     .height(dim)
@@ -32,7 +42,11 @@ pub fn icon_button<Msg: Clone + 'static>(
     .on_press(msg)
     .style(move |_, _| button::Style {
         background: Some(iced::Background::Color(bg)),
-        border: Border { color: border_c, width: 1.0, radius: 5.0.into() },
+        border: Border {
+            color: border_c,
+            width: 1.0,
+            radius: 5.0.into(),
+        },
         text_color: fg,
         ..Default::default()
     })

@@ -1,8 +1,17 @@
-use iced::{widget::{button, container}, Border, Color, Element, Padding};
+// TODO: remove when real backend is wired up — currently all mock data
+#![allow(dead_code)]
 use crate::theme::Palette;
+use iced::{
+    widget::{button, container},
+    Border, Color, Element, Padding,
+};
 
 /// 24×14 pill toggle. on=true → accent fill; off → border2 fill.
-pub fn toggle<Msg: Clone + 'static>(on: bool, msg: Msg, palette: &Palette) -> Element<'static, Msg> {
+pub fn toggle<Msg: Clone + 'static>(
+    on: bool,
+    msg: Msg,
+    palette: &Palette,
+) -> Element<'static, Msg> {
     let track_color = if on { palette.accent } else { palette.border2 };
     let knob_x: f32 = if on { 10.0 } else { 0.0 };
 
@@ -12,17 +21,28 @@ pub fn toggle<Msg: Clone + 'static>(on: bool, msg: Msg, palette: &Palette) -> El
         .height(10)
         .style(|_| container::Style {
             background: Some(iced::Background::Color(Color::WHITE)),
-            border: Border { radius: 5.0.into(), ..Default::default() },
+            border: Border {
+                radius: 5.0.into(),
+                ..Default::default()
+            },
             ..Default::default()
         });
 
     let track_content = container(knob)
         .width(24)
         .height(14)
-        .padding(Padding { top: 2.0, bottom: 2.0, left: 2.0 + knob_x, right: 0.0 })
+        .padding(Padding {
+            top: 2.0,
+            bottom: 2.0,
+            left: 2.0 + knob_x,
+            right: 0.0,
+        })
         .style(move |_| container::Style {
             background: Some(iced::Background::Color(track_color)),
-            border: Border { radius: 7.0.into(), ..Default::default() },
+            border: Border {
+                radius: 7.0.into(),
+                ..Default::default()
+            },
             ..Default::default()
         });
 
