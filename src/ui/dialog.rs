@@ -35,27 +35,24 @@ impl ConnectionDialogState {
     }
 }
 
-fn help_card<Msg: 'static>(
-    title: &str,
-    body: Option<&str>,
+fn help_card<'a, Msg: 'a>(
+    title: &'a str,
+    body: Option<&'a str>,
     palette: &Palette,
-) -> Element<'static, Msg> {
+) -> Element<'a, Msg> {
     let bg2 = palette.bg2;
     let border = palette.border;
     let fg = palette.fg;
     let fg_dim = palette.fg_dim;
     let ok = palette.ok;
 
-    let title_owned = title.to_owned();
-    let body_owned = body.map(str::to_owned);
-
-    let mut col = column![text(title_owned)
+    let mut col = column![text(title)
         .size(11)
         .color(fg)
         .font(iced::Font::MONOSPACE)]
     .spacing(4);
 
-    if let Some(b) = body_owned {
+    if let Some(b) = body {
         col = col.push(text(b).size(10).color(fg_dim).font(iced::Font::MONOSPACE));
     }
 

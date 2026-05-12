@@ -4,14 +4,14 @@ use iced::{
     Border, Color, Element, Length, Padding,
 };
 
-fn ghost_action<Msg: 'static>(
-    label: &str,
+fn ghost_action<'a, Msg: 'a>(
+    label: &'a str,
     fg: Color,
     bg: Color,
     border: Color,
-) -> Element<'static, Msg> {
+) -> Element<'a, Msg> {
     container(
-        text(label.to_string())
+        text(label)
             .size(10)
             .color(fg)
             .font(iced::Font::MONOSPACE),
