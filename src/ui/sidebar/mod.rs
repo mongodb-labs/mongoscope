@@ -18,7 +18,7 @@ use iced::{
     widget::{column, container, row, scrollable, text},
     Border, Element, Length, Padding,
 };
-use crate::{data::model::QueryEntry, theme::Palette, ui::dialog::ConnectionDialogState};
+use crate::{theme::Palette, ui::dialog::ConnectionDialogState};
 
 #[derive(Debug, Clone)]
 pub enum SidebarMsg {
@@ -29,53 +29,18 @@ pub enum SidebarMsg {
 }
 
 pub struct SidebarState {
-    pub databases: Vec<DatabaseItem>,
-    pub connections: Vec<ConnectionItem>,
-    pub clients: Vec<ClientItem>,
-    pub saved_views: Vec<SavedView>,
+    pub connections: Vec<ConnectionState>,
+    pub active_id: Option<usize>,
     pub dialog: Option<ConnectionDialogState>,
+    pub saved_views: Vec<SavedView>,
 }
 
 impl SidebarState {
     pub fn new() -> Self {
         Self {
-            connections: vec![],   // empty → dialog opens on launch
+            connections: vec![],
+            active_id: None,
             dialog: None,
-            databases: vec![
-                DatabaseItem {
-                    name: "shop".into(),
-                    expanded: true,
-                    active: false,
-                    collections: vec![
-                        CollectionItem { name: "orders".into(),    docs: 2_413_882,  size: "8.4 GB".into(),   idx: 7, active: false },
-                        CollectionItem { name: "products".into(),  docs: 184_302,    size: "412 MB".into(),   idx: 5, active: false },
-                        CollectionItem { name: "users".into(),     docs: 892_014,    size: "1.8 GB".into(),   idx: 6, active: false },
-                        CollectionItem { name: "carts".into(),     docs: 71_205,     size: "98 MB".into(),    idx: 3, active: false },
-                        CollectionItem { name: "sessions".into(),  docs: 12_044_119, size: "4.2 GB".into(),   idx: 4, active: false },
-                        CollectionItem { name: "reviews".into(),   docs: 3_201_885,  size: "2.1 GB".into(),   idx: 5, active: false },
-                        CollectionItem { name: "inventory".into(), docs: 48_112,     size: "64 MB".into(),    idx: 4, active: false },
-                        CollectionItem { name: "events".into(),    docs: 88_912_004, size: "41.2 GB".into(),  idx: 2, active: false },
-                    ],
-                },
-                DatabaseItem {
-                    name: "analytics".into(),
-                    expanded: false,
-                    active: false,
-                    collections: vec![
-                        CollectionItem { name: "pageviews".into(), docs: 12_500_000, size: "8.2 GB".into(),  idx: 3, active: false },
-                        CollectionItem { name: "funnels".into(),   docs: 420_100,   size: "312 MB".into(),  idx: 2, active: false },
-                    ],
-                },
-                DatabaseItem {
-                    name: "auth".into(),
-                    expanded: false,
-                    active: false,
-                    collections: vec![
-                        CollectionItem { name: "tokens".into(), docs: 2_100_000, size: "1.4 GB".into(), idx: 2, active: false },
-                    ],
-                },
-            ],
-            clients: vec![],
             saved_views: vec![
                 SavedView { id: 0, label: "slow queries (>500ms)".into() },
                 SavedView { id: 1, label: "COLLSCANs only".into() },
@@ -84,54 +49,27 @@ impl SidebarState {
         }
     }
 
+    pub fn active(&self) -> Option<&ConnectionState> {
+        let id = self.active_id?;
+        self.connections.iter().find(|c| c.item.id == id)
+    }
+
+    pub fn active_mut(&mut self) -> Option<&mut ConnectionState> {
+        let id = self.active_id?;
+        self.connections.iter_mut().find(|c| c.item.id == id)
+    }
+
     pub fn active_db(&self) -> Option<String> {
-        self.databases.iter().find(|d| d.active).map(|d| d.name.clone())
+        self.active()?.databases.iter().find(|d| d.active).map(|d| d.name.clone())
     }
 
     pub fn active_coll(&self) -> Option<String> {
-        self.databases
+        let conn = self.active()?;
+        conn.databases
             .iter()
             .find(|d| d.active)
             .and_then(|d| d.collections.iter().find(|c| c.active))
             .map(|c| c.name.clone())
-    }
-
-    pub fn register_entries(&mut self, entries: &[QueryEntry]) {
-        for entry in entries {
-            // Register client app
-            let app_name = entry.app.to_string();
-            if !self.clients.iter().any(|c| c.name == app_name) {
-                let color = clients::app_color_for(&app_name);
-                self.clients.push(ClientItem { name: app_name, color, active: false });
-            }
-            // Register database/collection (in case live traffic reveals new ones)
-            let db_name = entry.db.to_string();
-            let coll_name = entry.coll.to_string();
-            if let Some(db) = self.databases.iter_mut().find(|d| d.name == db_name) {
-                if !db.collections.iter().any(|c| c.name == coll_name) {
-                    db.collections.push(CollectionItem {
-                        name: coll_name,
-                        docs: 0,
-                        size: "".into(),
-                        idx: 0,
-                        active: false,
-                    });
-                }
-            } else {
-                self.databases.push(DatabaseItem {
-                    name: db_name,
-                    expanded: true,
-                    active: false,
-                    collections: vec![CollectionItem {
-                        name: coll_name,
-                        docs: 0,
-                        size: "".into(),
-                        idx: 0,
-                        active: false,
-                    }],
-                });
-            }
-        }
     }
 
     pub fn update(&mut self, msg: SidebarMsg) {
@@ -139,8 +77,9 @@ impl SidebarState {
             SidebarMsg::Connections(m) => match m {
                 ConnectionsMsg::Select(id) => {
                     for c in &mut self.connections {
-                        c.active = c.id == id;
+                        c.item.active = c.item.id == id;
                     }
+                    self.active_id = Some(id);
                 }
                 ConnectionsMsg::Add => {
                     if self.dialog.is_none() {
@@ -148,20 +87,13 @@ impl SidebarState {
                     }
                 }
                 ConnectionsMsg::DialogUriChanged(s) => {
-                    if let Some(d) = &mut self.dialog {
-                        d.uri = s;
-                        d.error = None;
-                    }
+                    if let Some(d) = &mut self.dialog { d.uri = s; d.error = None; }
                 }
                 ConnectionsMsg::DialogNameChanged(s) => {
-                    if let Some(d) = &mut self.dialog {
-                        d.name = s;
-                    }
+                    if let Some(d) = &mut self.dialog { d.name = s; }
                 }
                 ConnectionsMsg::DialogColorChanged(c) => {
-                    if let Some(d) = &mut self.dialog {
-                        d.color = c;
-                    }
+                    if let Some(d) = &mut self.dialog { d.color = c; }
                 }
                 ConnectionsMsg::DialogConnect => {
                     if let Some(d) = &mut self.dialog {
@@ -188,7 +120,7 @@ impl SidebarState {
                 }
                 ConnectionsMsg::DialogDone => {
                     if let Some(d) = &self.dialog {
-                        let next_id = self.connections.iter().map(|c| c.id).max().unwrap_or(0) + 1;
+                        let next_id = self.connections.iter().map(|c| c.item.id).max().unwrap_or(0) + 1;
                         let label = if d.name.is_empty() {
                             d.uri
                                 .trim_start_matches("mongodb://")
@@ -201,7 +133,7 @@ impl SidebarState {
                             d.name.clone()
                         };
                         let topology = format!("direct · proxy :{}", d.proxy_port);
-                        self.connections.push(ConnectionItem {
+                        let item = ConnectionItem {
                             id: next_id,
                             label,
                             topology,
@@ -210,11 +142,12 @@ impl SidebarState {
                             color: d.color,
                             active: true,
                             live: true,
-                        });
-                        let last = self.connections.len() - 1;
-                        for (i, c) in self.connections.iter_mut().enumerate() {
-                            c.active = i == last;
+                        };
+                        for c in &mut self.connections {
+                            c.item.active = false;
                         }
+                        self.connections.push(ConnectionState::new(item));
+                        self.active_id = Some(next_id);
                     }
                     self.dialog = None;
                 }
@@ -226,21 +159,27 @@ impl SidebarState {
                 }
                 ConnectionsMsg::DialogNoop => {}
             },
-            SidebarMsg::Databases(m) => match m {
-                DatabasesMsg::ToggleDb(name) => apply_toggle_db(&mut self.databases, &name),
-                DatabasesMsg::ToggleCollection(db, coll) => {
-                    apply_toggle_collection(&mut self.databases, &db, &coll)
-                }
-            },
-            SidebarMsg::Clients(m) => match m {
-                ClientsMsg::Toggle(name) => {
-                    for c in &mut self.clients {
-                        if c.name == name {
-                            c.active = !c.active;
+            SidebarMsg::Databases(m) => {
+                if let Some(conn) = self.active_mut() {
+                    match m {
+                        DatabasesMsg::ToggleDb(name) => apply_toggle_db(&mut conn.databases, &name),
+                        DatabasesMsg::ToggleCollection(db, coll) => {
+                            apply_toggle_collection(&mut conn.databases, &db, &coll)
                         }
                     }
                 }
-            },
+            }
+            SidebarMsg::Clients(m) => {
+                if let Some(conn) = self.active_mut() {
+                    match m {
+                        ClientsMsg::Toggle(name) => {
+                            for c in &mut conn.clients {
+                                if c.name == name { c.active = !c.active; }
+                            }
+                        }
+                    }
+                }
+            }
             SidebarMsg::SavedViews(m) => match m {
                 SavedViewsMsg::Delete(id) => self.saved_views.retain(|v| v.id != id),
                 SavedViewsMsg::Load(_) | SavedViewsMsg::Save => {}
@@ -288,25 +227,31 @@ impl SidebarState {
                 .into()
         };
 
-        let db_count = self.databases.len();
+        let (dbs, clients) = self.active()
+            .map(|c| (c.databases.as_slice(), c.clients.as_slice()))
+            .unwrap_or((&[], &[]));
+
+        let db_count = dbs.len();
+
+        let conn_items: Vec<ConnectionItem> = self.connections.iter().map(|c| c.item.clone()).collect();
 
         let content = column![
             section_header("CONNECTIONS".into(), None),
             connections_panel(
-                &self.connections,
+                &conn_items,
                 self.dialog.is_some(),
                 move |m| on_msg(SidebarMsg::Connections(m)),
                 palette,
             ),
             section_header("DATABASES".into(), Some(format!("{} dbs", db_count))),
             databases_panel(
-                &self.databases,
+                dbs,
                 move |m| on_msg(SidebarMsg::Databases(m)),
                 palette,
             ),
             section_header("CLIENTS".into(), None),
             clients_panel(
-                &self.clients,
+                clients,
                 move |m| on_msg(SidebarMsg::Clients(m)),
                 palette,
             ),
@@ -359,5 +304,63 @@ impl SidebarState {
             ..Default::default()
         })
         .into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::sidebar::connections::{ConnectionColor, ConnectionItem};
+
+    fn make_item(id: usize) -> ConnectionItem {
+        ConnectionItem {
+            id,
+            label: "test".into(),
+            topology: "direct".into(),
+            uri: "mongodb://localhost:27017/".into(),
+            proxy_port: 27117,
+            color: ConnectionColor::None,
+            active: false,
+            live: true,
+        }
+    }
+
+    #[test]
+    fn active_returns_none_when_empty() {
+        let s = SidebarState::new();
+        assert!(s.active().is_none());
+    }
+
+    #[test]
+    fn active_returns_correct_connection() {
+        let mut s = SidebarState::new();
+        s.connections.push(ConnectionState::new(make_item(1)));
+        s.connections.push(ConnectionState::new(make_item(2)));
+        s.active_id = Some(2);
+        assert_eq!(s.active().unwrap().item.id, 2);
+    }
+
+    #[test]
+    fn dialog_done_creates_connection_state_with_capturing_true() {
+        let mut s = SidebarState::new();
+        s.dialog = Some(crate::ui::dialog::ConnectionDialogState::new());
+        if let Some(d) = &mut s.dialog {
+            d.proxy_port = 27117;
+            d.step = crate::ui::dialog::DialogStep::Step2;
+        }
+        s.update(SidebarMsg::Connections(ConnectionsMsg::DialogDone));
+        assert_eq!(s.connections.len(), 1);
+        assert!(s.connections[0].capturing);
+        assert!(s.dialog.is_none());
+    }
+
+    #[test]
+    fn dialog_done_sets_active_id() {
+        let mut s = SidebarState::new();
+        s.dialog = Some(crate::ui::dialog::ConnectionDialogState::new());
+        if let Some(d) = &mut s.dialog { d.proxy_port = 27117; }
+        s.update(SidebarMsg::Connections(ConnectionsMsg::DialogDone));
+        assert!(s.active_id.is_some());
+        assert_eq!(s.active_id, Some(s.connections[0].item.id));
     }
 }
