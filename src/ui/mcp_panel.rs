@@ -201,7 +201,8 @@ fn footer_view<Msg: Clone + 'static>(
     let mut footer_btn = button(
         text(btn_text).size(11).color(btn_fg).font(Font::MONOSPACE)
     )
-    .padding(Padding { top: 7.0, bottom: 7.0, left: 0.0, right: 0.0 })
+    .width(Length::Fill)
+    .padding(Padding { top: 7.0, bottom: 7.0, left: 14.0, right: 14.0 })
     .style(move |_, _| button::Style {
         background: Some(Background::Color(btn_bg)),
         border: Border { color: btn_border, width: 1.0, radius: 3.0.into() },
@@ -213,9 +214,7 @@ fn footer_view<Msg: Clone + 'static>(
         footer_btn = footer_btn.on_press(on_msg(McpMsg::StartStop));
     }
 
-    container(
-        container(footer_btn).width(Length::Fill)
-    )
+    container(footer_btn)
     .width(Length::Fill)
     .padding(Padding::from([12, 16]))
     .style(move |_| container::Style {
@@ -331,7 +330,8 @@ pub fn overlay_view<Msg: Clone + 'static>(
             .width(Length::Fill).style(divider_style),
         footer,
     ]
-    .spacing(0);
+    .spacing(0)
+    .height(Length::Fill);
 
     let drawer = mouse_area(
         container(drawer_content)
