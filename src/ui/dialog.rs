@@ -417,6 +417,211 @@ fn routing_row<'a, Msg: 'static>(
     .into()
 }
 
+pub fn dialog_view<Msg: Clone + 'static>(
+    state: &ConnectionDialogState,
+    on_msg: impl Fn(ConnectionsMsg) -> Msg + 'static + Copy,
+    palette: &Palette,
+) -> Element<'static, Msg> {
+    let bg       = palette.bg;
+    let bg1      = palette.bg1;
+    let fg       = palette.fg;
+    let fg_dim   = palette.fg_dim;
+    let fg_dim2  = palette.fg_dim2;
+    let border   = palette.border;
+    let ok       = palette.ok;
+    let ok_dim   = Color { a: 0.3, ..ok };
+
+    let connecting = matches!(state.step, DialogStep::Step1 { connecting: true });
+    let is_step2   = matches!(state.step, DialogStep::Step2);
+
+    // ── Step chips ────────────────────────────────────────────────────────────
+    let chip1_bg    = if is_step2 { ok_dim } else { ok };
+    let chip1_fg    = if is_step2 { ok } else { bg };
+    let chip1_label = if is_step2 { "✓ Target server" } else { "1 · Target server" };
+
+    let chip2_bg    = if is_step2 { ok } else { bg1 };
+    let chip2_fg    = if is_step2 { bg } else { fg_dim2 };
+    let chip2_label = "2 · Proxy string";
+
+    let chip = |label: String, bg_c: Color, fg_c: Color| -> Element<'static, Msg> {
+        container(
+            text(label).size(10).color(fg_c).font(iced::Font::MONOSPACE)
+        )
+        .padding(Padding { top: 3.0, bottom: 3.0, left: 10.0, right: 10.0 })
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(bg_c)),
+            border: Border { radius: 3.0.into(), ..Default::default() },
+            ..Default::default()
+        })
+        .into()
+    };
+
+    let step_chips = row![
+        chip(chip1_label.to_owned(), chip1_bg, chip1_fg),
+        text("›").size(10).color(fg_dim2).font(iced::Font::MONOSPACE),
+        chip(chip2_label.to_owned(), chip2_bg, chip2_fg),
+    ]
+    .spacing(4)
+    .align_y(Alignment::Center);
+
+    // ── Modal header ──────────────────────────────────────────────────────────
+    let header = container(
+        row![
+            column![
+                text("New Connection")
+                    .size(16).color(fg).font(iced::Font::MONOSPACE),
+                step_chips,
+            ]
+            .spacing(8)
+            .width(Length::Fill),
+            button(text("✕").size(13).color(fg_dim2).font(iced::Font::MONOSPACE))
+                .on_press(on_msg(ConnectionsMsg::DialogCancel))
+                .padding(Padding::from([2, 6]))
+                .style(move |_, _| button::Style {
+                    background: None,
+                    border: Border::default(),
+                    text_color: fg_dim2,
+                    ..Default::default()
+                }),
+        ]
+        .align_y(Alignment::Start)
+    )
+    .width(Length::Fill)
+    .padding(Padding { top: 18.0, bottom: 14.0, left: 24.0, right: 24.0 });
+
+    // ── Step body ─────────────────────────────────────────────────────────────
+    let body: Element<Msg> = if is_step2 {
+        step2_view(state, on_msg, palette)
+    } else {
+        step1_view(state, on_msg, palette)
+    };
+
+    // ── Footer ────────────────────────────────────────────────────────────────
+    let footer: Element<Msg> = if is_step2 {
+        let back_btn = button(
+            text("← Back").size(11).color(fg_dim).font(iced::Font::MONOSPACE)
+        )
+        .on_press(on_msg(ConnectionsMsg::DialogBack))
+        .padding(Padding::from([5, 14]))
+        .style(move |_, _| button::Style {
+            background: None,
+            border: Border { color: border, width: 1.0, radius: 4.0.into() },
+            text_color: fg_dim,
+            ..Default::default()
+        });
+
+        let done_btn = button(
+            text("Done").size(11).color(bg).font(iced::Font::MONOSPACE)
+        )
+        .on_press(on_msg(ConnectionsMsg::DialogDone))
+        .padding(Padding::from([5, 14]))
+        .style(move |_, _| button::Style {
+            background: Some(iced::Background::Color(ok)),
+            border: Border::default(),
+            text_color: bg,
+            ..Default::default()
+        });
+
+        container(
+            row![back_btn, iced::widget::Space::new(Length::Fill, 0), done_btn]
+                .align_y(Alignment::Center)
+        )
+        .width(Length::Fill)
+        .padding(Padding { top: 12.0, bottom: 12.0, left: 24.0, right: 24.0 })
+        .style(move |_| container::Style {
+            border: Border { color: border, width: 1.0, radius: 0.0.into() },
+            ..Default::default()
+        })
+        .into()
+    } else {
+        let primary_label = if connecting { "Connecting…" } else { "Connect →" };
+        let primary_bg = if connecting {
+            Color { r: ok.r * 0.3, g: ok.g * 0.3, b: ok.b * 0.3, a: 1.0 }
+        } else {
+            ok
+        };
+        let primary_fg = if connecting { Color { a: 0.5, ..fg } } else { bg };
+
+        let cancel_btn = button(
+            text("Cancel").size(11).color(fg_dim).font(iced::Font::MONOSPACE)
+        )
+        .on_press(on_msg(ConnectionsMsg::DialogCancel))
+        .padding(Padding::from([5, 14]))
+        .style(move |_, _| button::Style {
+            background: None,
+            border: Border { color: border, width: 1.0, radius: 4.0.into() },
+            text_color: fg_dim,
+            ..Default::default()
+        });
+
+        let mut connect_btn = button(
+            text(primary_label).size(11).color(primary_fg).font(iced::Font::MONOSPACE)
+        )
+        .padding(Padding::from([5, 14]))
+        .style(move |_, _| button::Style {
+            background: Some(iced::Background::Color(primary_bg)),
+            border: Border::default(),
+            text_color: primary_fg,
+            ..Default::default()
+        });
+
+        if !connecting {
+            connect_btn = connect_btn.on_press(on_msg(ConnectionsMsg::DialogConnect));
+        }
+
+        container(
+            row![cancel_btn, iced::widget::Space::new(Length::Fill, 0), connect_btn]
+                .align_y(Alignment::Center)
+        )
+        .width(Length::Fill)
+        .padding(Padding { top: 12.0, bottom: 12.0, left: 24.0, right: 24.0 })
+        .style(move |_| container::Style {
+            border: Border { color: border, width: 1.0, radius: 0.0.into() },
+            ..Default::default()
+        })
+        .into()
+    };
+
+    // ── Modal card ────────────────────────────────────────────────────────────
+    let divider_style = move |_: &_| container::Style {
+        background: Some(iced::Background::Color(border)),
+        ..Default::default()
+    };
+
+    let modal = container(
+        column![
+            header,
+            container(iced::widget::Space::new(Length::Fill, 1.0))
+                .width(Length::Fill).style(divider_style),
+            body,
+            container(iced::widget::Space::new(Length::Fill, 1.0))
+                .width(Length::Fill).style(divider_style),
+            footer,
+        ]
+        .spacing(0)
+    )
+    .width(700)
+    .style(move |_| container::Style {
+        background: Some(iced::Background::Color(bg)),
+        border: Border { color: border, width: 1.0, radius: 8.0.into() },
+        ..Default::default()
+    });
+
+    // ── Scrim + centered modal ────────────────────────────────────────────────
+    let scrim_color = Color { r: 0.0, g: 0.0, b: 0.0, a: 0.6 };
+
+    container(modal)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center)
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(scrim_color)),
+            ..Default::default()
+        })
+        .into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
