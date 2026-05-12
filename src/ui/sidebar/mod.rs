@@ -82,6 +82,15 @@ impl SidebarState {
             .map(|c| c.name.clone())
     }
 
+    #[allow(dead_code)]
+    pub fn active_client(&self) -> Option<String> {
+        self.active()?
+            .clients
+            .iter()
+            .find(|c| c.active)
+            .map(|c| c.name.clone())
+    }
+
     pub fn update(&mut self, msg: SidebarMsg) {
         match msg {
             SidebarMsg::Connections(m) => match m {
@@ -196,9 +205,18 @@ impl SidebarState {
                 if let Some(conn) = self.active_mut() {
                     match m {
                         ClientsMsg::Toggle(name) => {
+                            let was_active = conn
+                                .clients
+                                .iter()
+                                .find(|c| c.name == name)
+                                .map(|c| c.active)
+                                .unwrap_or(false);
                             for c in &mut conn.clients {
-                                if c.name == name {
-                                    c.active = !c.active;
+                                c.active = false;
+                            }
+                            if !was_active {
+                                if let Some(c) = conn.clients.iter_mut().find(|c| c.name == name) {
+                                    c.active = true;
                                 }
                             }
                         }
@@ -365,6 +383,15 @@ mod tests {
         }
     }
 
+    impl SidebarState {
+        fn default_for_test() -> Self {
+            let mut s = SidebarState::new();
+            s.connections.push(ConnectionState::new(make_item(0)));
+            s.active_id = Some(0);
+            s
+        }
+    }
+
     #[test]
     fn active_returns_none_when_empty() {
         let s = SidebarState::new();
@@ -404,5 +431,47 @@ mod tests {
         s.update(SidebarMsg::Connections(ConnectionsMsg::DialogDone));
         assert!(s.active_id.is_some());
         assert_eq!(s.active_id, Some(s.connections[0].item.id));
+    }
+
+    #[test]
+    fn client_toggle_is_radio_style() {
+        let mut s = SidebarState::default_for_test();
+        s.connections[0].clients = vec![
+            crate::ui::sidebar::clients::ClientItem {
+                name: "app1".into(),
+                color: [0, 0, 0],
+                active: false,
+            },
+            crate::ui::sidebar::clients::ClientItem {
+                name: "app2".into(),
+                color: [0, 0, 0],
+                active: false,
+            },
+        ];
+        s.update(SidebarMsg::Clients(ClientsMsg::Toggle("app1".into())));
+        assert!(s.connections[0].clients[0].active);
+        assert!(!s.connections[0].clients[1].active);
+
+        s.update(SidebarMsg::Clients(ClientsMsg::Toggle("app2".into())));
+        assert!(!s.connections[0].clients[0].active);
+        assert!(s.connections[0].clients[1].active);
+
+        // toggle active one off
+        s.update(SidebarMsg::Clients(ClientsMsg::Toggle("app2".into())));
+        assert!(!s.connections[0].clients[0].active);
+        assert!(!s.connections[0].clients[1].active);
+    }
+
+    #[test]
+    fn active_client_returns_active_name() {
+        let mut s = SidebarState::default_for_test();
+        s.connections[0].clients = vec![crate::ui::sidebar::clients::ClientItem {
+            name: "myapp".into(),
+            color: [0, 0, 0],
+            active: false,
+        }];
+        assert_eq!(s.active_client(), None);
+        s.connections[0].clients[0].active = true;
+        assert_eq!(s.active_client(), Some("myapp".into()));
     }
 }
