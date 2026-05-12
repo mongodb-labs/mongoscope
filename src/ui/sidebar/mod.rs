@@ -148,7 +148,7 @@ impl SidebarState {
                     }
                 }
                 ConnectionsMsg::Add => {}
-                _ => {}
+                _ => {} // TODO Task 6: full dialog message handling replaces this arm
             },
             SidebarMsg::Databases(m) => match m {
                 DatabasesMsg::ToggleDb(name) => apply_toggle_db(&mut self.databases, &name),
@@ -218,7 +218,7 @@ impl SidebarState {
             section_header("CONNECTIONS".into(), None),
             connections_panel(
                 &self.connections,
-                false,
+                false, // TODO Task 6: replace with self.dialog.is_some()
                 move |m| on_msg(SidebarMsg::Connections(m)),
                 palette,
             ),
