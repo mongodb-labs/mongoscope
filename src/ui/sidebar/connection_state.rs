@@ -25,13 +25,7 @@ impl ConnectionState {
     }
 
     fn stub_collection(name: String) -> CollectionItem {
-        CollectionItem {
-            name,
-            docs: 0,
-            size: "".into(),
-            idx: 0,
-            active: false,
-        }
+        CollectionItem { name, requests: 0, active: false }
     }
 
     pub fn register_entries(&mut self, entries: &[QueryEntry]) {
@@ -44,15 +38,21 @@ impl ConnectionState {
             let db_name = entry.db.to_string();
             let coll_name = entry.coll.to_string();
             if let Some(db) = self.databases.iter_mut().find(|d| d.name == db_name) {
-                if !db.collections.iter().any(|c| c.name == coll_name) {
-                    db.collections.push(Self::stub_collection(coll_name));
+                if let Some(coll) = db.collections.iter_mut().find(|c| c.name == coll_name) {
+                    coll.requests = coll.requests.saturating_add(1);
+                } else {
+                    let mut c = Self::stub_collection(coll_name);
+                    c.requests = 1;
+                    db.collections.push(c);
                 }
             } else {
+                let mut coll = Self::stub_collection(coll_name);
+                coll.requests = 1;
                 self.databases.push(DatabaseItem {
                     name: db_name,
                     expanded: true,
                     active: false,
-                    collections: vec![Self::stub_collection(coll_name)],
+                    collections: vec![coll],
                 });
             }
         }
