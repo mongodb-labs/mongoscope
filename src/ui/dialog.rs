@@ -272,7 +272,6 @@ pub fn step1_view<Msg: Clone + 'static>(
             .padding(Padding { top: 18.0, bottom: 18.0, left: 24.0, right: 24.0 }),
         container(help_panel)
             .width(200)
-            .height(Length::Fill)
             .padding(Padding { top: 18.0, bottom: 18.0, left: 16.0, right: 16.0 })
             .style(move |_| container::Style {
                 background: Some(iced::Background::Color(bg2)),
