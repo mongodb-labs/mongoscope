@@ -22,19 +22,19 @@ fn separator<Msg: 'static>(border_c: Color) -> Element<'static, Msg> {
         .into()
 }
 
-fn action_label<Msg: 'static>(
-    label: &str,
+fn action_label<'a, Msg: 'a>(
+    label: &'a str,
     active: bool,
     palette: &Palette,
     fs: f32,
-) -> Element<'static, Msg> {
+) -> Element<'a, Msg> {
     let (bg, fg, border) = if active {
         (palette.bg_sel, palette.fg, palette.accent)
     } else {
         (palette.bg, palette.fg_dim, palette.border)
     };
     container(
-        text(label.to_string())
+        text(label)
             .size(fs)
             .color(fg)
             .font(iced::Font::MONOSPACE),

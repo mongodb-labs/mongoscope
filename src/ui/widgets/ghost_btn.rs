@@ -11,13 +11,13 @@ pub enum GhostVariant {
     Danger,
 }
 
-pub fn ghost_button<Msg: Clone + 'static>(
-    label: &str,
+pub fn ghost_button<'a, Msg: Clone + 'a>(
+    label: &'a str,
     variant: GhostVariant,
     msg: Msg,
     palette: &Palette,
     fs: f32,
-) -> Element<'static, Msg> {
+) -> Element<'a, Msg> {
     let (bg, fg, border_color) = match variant {
         GhostVariant::Default => (palette.bg, palette.fg, palette.border),
         GhostVariant::Active => (palette.bg_sel, palette.fg, palette.accent),
@@ -35,7 +35,7 @@ pub fn ghost_button<Msg: Clone + 'static>(
     };
 
     button(
-        iced::widget::text(label.to_string())
+        iced::widget::text(label)
             .size(fs)
             .color(fg)
             .font(iced::Font::MONOSPACE),

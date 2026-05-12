@@ -329,14 +329,14 @@ pub fn rules_tab<Msg: Clone + 'static>(
     .into()
 }
 
-fn ghost_label<Msg: 'static>(
-    label: &str,
+fn ghost_label<'a, Msg: 'a>(
+    label: &'a str,
     fg: Color,
     bg: Color,
     border: Color,
-) -> Element<'static, Msg> {
+) -> Element<'a, Msg> {
     container(
-        text(label.to_string())
+        text(label)
             .size(10)
             .color(fg)
             .font(iced::Font::MONOSPACE),
@@ -359,9 +359,9 @@ fn ghost_label<Msg: 'static>(
     .into()
 }
 
-fn ghost_label_solid<Msg: 'static>(label: &str, fg: Color, bg: Color) -> Element<'static, Msg> {
+fn ghost_label_solid<'a, Msg: 'a>(label: &'a str, fg: Color, bg: Color) -> Element<'a, Msg> {
     container(
-        text(label.to_string())
+        text(label)
             .size(10)
             .color(fg)
             .font(iced::Font::MONOSPACE),
@@ -384,12 +384,12 @@ fn ghost_label_solid<Msg: 'static>(label: &str, fg: Color, bg: Color) -> Element
     .into()
 }
 
-fn ghost_label_danger<Msg: 'static>(
-    label: &str,
+fn ghost_label_danger<'a, Msg: 'a>(
+    label: &'a str,
     fg: Color,
     bg: Color,
     _border: Color,
-) -> Element<'static, Msg> {
+) -> Element<'a, Msg> {
     let border_c = Color {
         r: fg.r,
         g: fg.g,
@@ -397,7 +397,7 @@ fn ghost_label_danger<Msg: 'static>(
         a: 0.4,
     };
     container(
-        text(label.to_string())
+        text(label)
             .size(10)
             .color(fg)
             .font(iced::Font::MONOSPACE),
