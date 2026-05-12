@@ -83,6 +83,28 @@ impl FilterState {
         self.expr = FilterExpr::parse(&self.text);
     }
 
+    /// Replace any existing `app:` token in `self.text` with the given value,
+    /// preserving all other tokens. Passing `None` removes the token.
+    pub fn set_app(&mut self, app: Option<String>) {
+        let rest: String = self
+            .text
+            .split_whitespace()
+            .filter(|t| !t.starts_with("app:"))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        let mut parts: Vec<String> = Vec::new();
+        if !rest.is_empty() {
+            parts.push(rest);
+        }
+        if let Some(a) = app {
+            parts.push(format!("app:{}", a));
+        }
+
+        self.text = parts.join(" ");
+        self.expr = FilterExpr::parse(&self.text);
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn view<'a, Msg: Clone + 'static>(
         &'a self,
@@ -237,5 +259,33 @@ mod tests {
         fs.text = "db:shop coll:orders".into();
         fs.set_scope(Some("shop".into()), None);
         assert_eq!(fs.text, "db:shop");
+    }
+
+    #[test]
+    fn set_app_injects_app_token() {
+        let mut fs = FilterState::new();
+        fs.set_app(Some("myapi".into()));
+        assert_eq!(fs.text, "app:myapi");
+        assert_eq!(fs.expr.app, Some("myapi".into()));
+    }
+
+    #[test]
+    fn set_app_replaces_existing_app_token() {
+        let mut fs = FilterState::new();
+        fs.text = "db:shop app:old slow".into();
+        fs.expr = FilterExpr::parse(&fs.text);
+        fs.set_app(Some("newapi".into()));
+        assert_eq!(fs.text, "db:shop slow app:newapi");
+        assert_eq!(fs.expr.app, Some("newapi".into()));
+    }
+
+    #[test]
+    fn set_app_none_removes_token() {
+        let mut fs = FilterState::new();
+        fs.text = "db:shop app:old slow".into();
+        fs.expr = FilterExpr::parse(&fs.text);
+        fs.set_app(None);
+        assert_eq!(fs.text, "db:shop slow");
+        assert_eq!(fs.expr.app, None);
     }
 }

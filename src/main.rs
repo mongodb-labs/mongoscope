@@ -153,6 +153,12 @@ impl App {
                         conn.feed.filter.set_scope(db, coll);
                     }
                 }
+                if let SidebarMsg::Clients(_) = m {
+                    let app = self.sidebar.active_client();
+                    if let Some(conn) = self.sidebar.active_mut() {
+                        conn.feed.filter.set_app(app);
+                    }
+                }
                 Task::none()
             }
             Message::ToggleTheme => {
