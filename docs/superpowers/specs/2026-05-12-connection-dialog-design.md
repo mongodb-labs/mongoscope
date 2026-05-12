@@ -37,7 +37,21 @@ Screenshot: `_designs/connection-dialog/screenshot-both-steps.png`
 
 **Footer:** `Cancel` (left) | `Connect →` (right, primary green).
 
-**On "Connect →":** Attempt TCP connection to the target. On success, advance to step 2. On failure, show an inline error below the URI field (no step change).
+**On "Connect →":** Dispatches `DialogConnect` message. Transitions to connecting state (see below). Async result delivered via `DialogConnectResult`.
+
+### Connecting state (step 1, in-progress)
+
+- All form fields disabled and dimmed (`background: #0f0f0f`, `border: #2a2a2a`, `color: #555`).
+- Status row below fields: spinner glyph (◌, green) + "Connecting to `<host>`…" in `#888`.
+- Footer button changes to "Connecting…" (disabled, muted green: `background: #1a4a3a`, `color: #4a8a6a`).
+- Cancel remains active — dispatches `DialogCancel` and aborts the connection attempt.
+
+### Connection failed state (step 1, error)
+
+- Form fields re-enabled (normal styles).
+- URI textarea gets red border (`#c0392b`).
+- Inline error row below textarea: red ✕ icon + error message string from the connect result (e.g. "Connection refused — no server at localhost:27017").
+- Footer button reverts to "Connect →" (primary green). Error clears as soon as the user edits the URI.
 
 ---
 
