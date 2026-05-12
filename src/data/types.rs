@@ -1,6 +1,9 @@
 use nutype::nutype;
 
-#[nutype(validate(greater = 0), derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord))]
+#[nutype(
+    validate(greater = 0),
+    derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)
+)]
 pub struct QueryId(u64);
 
 #[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord))]
@@ -9,16 +12,32 @@ pub struct LatencyMs(u32);
 #[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord))]
 pub struct TimestampMs(u64);
 
-#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display))]
+#[nutype(
+    sanitize(trim),
+    validate(not_empty),
+    derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display)
+)]
 pub struct CollectionName(String);
 
-#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display))]
+#[nutype(
+    sanitize(trim),
+    validate(not_empty),
+    derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display)
+)]
 pub struct AppName(String);
 
-#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display))]
+#[nutype(
+    sanitize(trim),
+    validate(not_empty),
+    derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display)
+)]
 pub struct DatabaseName(String);
 
-#[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display))]
+#[nutype(
+    sanitize(trim),
+    validate(not_empty),
+    derive(Debug, Clone, PartialEq, Eq, Hash, Deref, Display)
+)]
 pub struct IndexName(String);
 
 #[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord))]

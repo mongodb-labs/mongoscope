@@ -1,5 +1,8 @@
-use iced::{widget::{container, row, text}, Border, Color, Element, Length, Padding};
 use crate::theme::Palette;
+use iced::{
+    widget::{container, row, text},
+    Border, Element, Length, Padding,
+};
 
 pub fn logo<Msg: 'static>(palette: &Palette) -> Element<'static, Msg> {
     let accent = palette.accent;
@@ -8,7 +11,10 @@ pub fn logo<Msg: 'static>(palette: &Palette) -> Element<'static, Msg> {
         .height(14)
         .style(move |_| container::Style {
             background: Some(iced::Background::Color(accent)),
-            border: Border { radius: 3.0.into(), ..Default::default() },
+            border: Border {
+                radius: 3.0.into(),
+                ..Default::default()
+            },
             ..Default::default()
         });
 
@@ -21,7 +27,12 @@ pub fn logo<Msg: 'static>(palette: &Palette) -> Element<'static, Msg> {
     ]
     .spacing(8)
     .align_y(iced::Alignment::Center)
-    .padding(Padding { left: 12.0, right: 8.0, top: 0.0, bottom: 0.0 })
+    .padding(Padding {
+        left: 12.0,
+        right: 8.0,
+        top: 0.0,
+        bottom: 0.0,
+    })
     .width(Length::Shrink)
     .into()
 }

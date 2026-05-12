@@ -1,5 +1,8 @@
-use iced::{widget::{container, row, text}, Color, Element, Length};
 use crate::theme::Palette;
+use iced::{
+    widget::{container, row, text},
+    Color, Element, Length,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LatencyClass {
@@ -9,9 +12,13 @@ pub enum LatencyClass {
 }
 
 pub fn latency_class(ms: u32) -> LatencyClass {
-    if ms >= 1000 { LatencyClass::Slow }
-    else if ms >= 100 { LatencyClass::Warn }
-    else { LatencyClass::Ok }
+    if ms >= 1000 {
+        LatencyClass::Slow
+    } else if ms >= 100 {
+        LatencyClass::Warn
+    } else {
+        LatencyClass::Ok
+    }
 }
 
 pub fn format_latency(ms: u32) -> String {
@@ -41,15 +48,21 @@ pub fn latency_bar<Msg: 'static>(ms: u32, palette: &Palette, fs: f32) -> Element
             .width(Length::FillPortion((fill_pct as u16).max(1)))
             .style(move |_| container::Style {
                 background: Some(iced::Background::Color(color)),
-                border: iced::Border { radius: 2.0.into(), ..Default::default() },
+                border: iced::Border {
+                    radius: 2.0.into(),
+                    ..Default::default()
+                },
                 ..Default::default()
-            })
+            }),
     )
     .width(Length::Fill)
     .height(4)
     .style(move |_| container::Style {
         background: Some(iced::Background::Color(bg2)),
-        border: iced::Border { radius: 2.0.into(), ..Default::default() },
+        border: iced::Border {
+            radius: 2.0.into(),
+            ..Default::default()
+        },
         ..Default::default()
     });
 

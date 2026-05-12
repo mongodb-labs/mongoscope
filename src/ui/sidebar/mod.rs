@@ -6,19 +6,16 @@ pub mod databases;
 pub mod saved_views;
 pub use connection_state::ConnectionState;
 
-pub use clients::{clients_panel, ClientItem, ClientsMsg};
-pub use collections::CollectionItem;
+pub use clients::{clients_panel, ClientsMsg};
 pub use connections::{connections_panel, ConnectionItem, ConnectionsMsg};
-pub use databases::{
-    apply_toggle_collection, apply_toggle_db, databases_panel, DatabaseItem, DatabasesMsg,
-};
+pub use databases::{apply_toggle_collection, apply_toggle_db, databases_panel, DatabasesMsg};
 pub use saved_views::{saved_views_panel, SavedView, SavedViewsMsg};
 
+use crate::{theme::Palette, ui::dialog::ConnectionDialogState};
 use iced::{
     widget::{column, container, row, scrollable, text},
     Border, Element, Length, Padding,
 };
-use crate::{theme::Palette, ui::dialog::ConnectionDialogState};
 
 #[derive(Debug, Clone)]
 pub enum SidebarMsg {
@@ -42,9 +39,18 @@ impl SidebarState {
             active_id: None,
             dialog: None,
             saved_views: vec![
-                SavedView { id: 0, label: "slow queries (>500ms)".into() },
-                SavedView { id: 1, label: "COLLSCANs only".into() },
-                SavedView { id: 2, label: "writes to orders".into() },
+                SavedView {
+                    id: 0,
+                    label: "slow queries (>500ms)".into(),
+                },
+                SavedView {
+                    id: 1,
+                    label: "COLLSCANs only".into(),
+                },
+                SavedView {
+                    id: 2,
+                    label: "writes to orders".into(),
+                },
             ],
         }
     }
@@ -60,7 +66,11 @@ impl SidebarState {
     }
 
     pub fn active_db(&self) -> Option<String> {
-        self.active()?.databases.iter().find(|d| d.active).map(|d| d.name.clone())
+        self.active()?
+            .databases
+            .iter()
+            .find(|d| d.active)
+            .map(|d| d.name.clone())
     }
 
     pub fn active_coll(&self) -> Option<String> {
@@ -87,13 +97,20 @@ impl SidebarState {
                     }
                 }
                 ConnectionsMsg::DialogUriChanged(s) => {
-                    if let Some(d) = &mut self.dialog { d.uri = s; d.error = None; }
+                    if let Some(d) = &mut self.dialog {
+                        d.uri = s;
+                        d.error = None;
+                    }
                 }
                 ConnectionsMsg::DialogNameChanged(s) => {
-                    if let Some(d) = &mut self.dialog { d.name = s; }
+                    if let Some(d) = &mut self.dialog {
+                        d.name = s;
+                    }
                 }
                 ConnectionsMsg::DialogColorChanged(c) => {
-                    if let Some(d) = &mut self.dialog { d.color = c; }
+                    if let Some(d) = &mut self.dialog {
+                        d.color = c;
+                    }
                 }
                 ConnectionsMsg::DialogConnect => {
                     if let Some(d) = &mut self.dialog {
@@ -120,7 +137,13 @@ impl SidebarState {
                 }
                 ConnectionsMsg::DialogDone => {
                     if let Some(d) = &self.dialog {
-                        let next_id = self.connections.iter().map(|c| c.item.id).max().unwrap_or(0) + 1;
+                        let next_id = self
+                            .connections
+                            .iter()
+                            .map(|c| c.item.id)
+                            .max()
+                            .unwrap_or(0)
+                            + 1;
                         let label = if d.name.is_empty() {
                             d.uri
                                 .trim_start_matches("mongodb://")
@@ -174,7 +197,9 @@ impl SidebarState {
                     match m {
                         ClientsMsg::Toggle(name) => {
                             for c in &mut conn.clients {
-                                if c.name == name { c.active = !c.active; }
+                                if c.name == name {
+                                    c.active = !c.active;
+                                }
                             }
                         }
                     }
@@ -217,23 +242,34 @@ impl SidebarState {
             };
 
             container(inner)
-                .padding(Padding { top: 8.0, bottom: 3.0, left: 8.0, right: 8.0 })
+                .padding(Padding {
+                    top: 8.0,
+                    bottom: 3.0,
+                    left: 8.0,
+                    right: 8.0,
+                })
                 .width(Length::Fill)
                 .style(move |_| container::Style {
                     background: Some(iced::Background::Color(bg1)),
-                    border: Border { color: border_color, width: 0.0, radius: 0.0.into() },
+                    border: Border {
+                        color: border_color,
+                        width: 0.0,
+                        radius: 0.0.into(),
+                    },
                     ..Default::default()
                 })
                 .into()
         };
 
-        let (dbs, clients) = self.active()
+        let (dbs, clients) = self
+            .active()
             .map(|c| (c.databases.as_slice(), c.clients.as_slice()))
             .unwrap_or((&[], &[]));
 
         let db_count = dbs.len();
 
-        let conn_items: Vec<ConnectionItem> = self.connections.iter().map(|c| c.item.clone()).collect();
+        let conn_items: Vec<ConnectionItem> =
+            self.connections.iter().map(|c| c.item.clone()).collect();
 
         let content = column![
             section_header("CONNECTIONS".into(), None),
@@ -244,17 +280,9 @@ impl SidebarState {
                 palette,
             ),
             section_header("DATABASES".into(), Some(format!("{} dbs", db_count))),
-            databases_panel(
-                dbs,
-                move |m| on_msg(SidebarMsg::Databases(m)),
-                palette,
-            ),
+            databases_panel(dbs, move |m| on_msg(SidebarMsg::Databases(m)), palette,),
             section_header("CLIENTS".into(), None),
-            clients_panel(
-                clients,
-                move |m| on_msg(SidebarMsg::Clients(m)),
-                palette,
-            ),
+            clients_panel(clients, move |m| on_msg(SidebarMsg::Clients(m)), palette,),
             section_header("SAVED VIEWS".into(), None),
             saved_views_panel(
                 &self.saved_views,
@@ -272,16 +300,24 @@ impl SidebarState {
                 .style(move |_theme, status| {
                     let a = match status {
                         scrollable::Status::Active => 0.0,
-                        scrollable::Status::Hovered { .. } | scrollable::Status::Dragged { .. } => 1.0,
+                        scrollable::Status::Hovered { .. } | scrollable::Status::Dragged { .. } => {
+                            1.0
+                        }
                     };
                     scrollable::Style {
                         container: iced::widget::container::Style::default(),
                         vertical_rail: scrollable::Rail {
-                            background: Some(iced::Background::Color(iced::Color { a: a * 0.5, ..bg })),
+                            background: Some(iced::Background::Color(iced::Color {
+                                a: a * 0.5,
+                                ..bg
+                            })),
                             border: Border::default(),
                             scroller: scrollable::Scroller {
                                 color: iced::Color { a, ..fg_dim2 },
-                                border: Border { radius: 4.0.into(), ..Default::default() },
+                                border: Border {
+                                    radius: 4.0.into(),
+                                    ..Default::default()
+                                },
                             },
                         },
                         horizontal_rail: scrollable::Rail {
@@ -300,7 +336,11 @@ impl SidebarState {
         .height(Length::Fill)
         .style(move |_| container::Style {
             background: Some(iced::Background::Color(bg)),
-            border: Border { color: border_color, width: 1.0, radius: 0.0.into() },
+            border: Border {
+                color: border_color,
+                width: 1.0,
+                radius: 0.0.into(),
+            },
             ..Default::default()
         })
         .into()
@@ -358,7 +398,9 @@ mod tests {
     fn dialog_done_sets_active_id() {
         let mut s = SidebarState::new();
         s.dialog = Some(crate::ui::dialog::ConnectionDialogState::new());
-        if let Some(d) = &mut s.dialog { d.proxy_port = 27117; }
+        if let Some(d) = &mut s.dialog {
+            d.proxy_port = 27117;
+        }
         s.update(SidebarMsg::Connections(ConnectionsMsg::DialogDone));
         assert!(s.active_id.is_some());
         assert_eq!(s.active_id, Some(s.connections[0].item.id));
