@@ -2,13 +2,15 @@ mod data;
 mod theme;
 mod ui;
 
-use iced::{mouse, widget::{column, container, mouse_area, row, scrollable}, Element, Length, Subscription, Task};
+use std::time::Duration;
+use iced::{mouse, widget::{column, container, mouse_area, row, scrollable, stack}, Element, Length, Subscription, Task};
 use data::{mock::MockSource, model::QueryEntry, source::DataSource, types::QueryId};
 use theme::{Density, Dock, Palette, Theme};
 use ui::{
+    dialog::dialog_view,
     feed::{FeedMsg, FeedState, FEED_SCROLL_ID},
     inspector::{InspectorMsg, InspectorState},
-    sidebar::{SidebarMsg, SidebarState},
+    sidebar::{connections::ConnectionsMsg, SidebarMsg, SidebarState},
     statusbar::{statusbar, StatusInfo},
     topbar::{conn_bar::ConnInfo, topbar, MenuMsg},
 };
@@ -42,7 +44,7 @@ struct App {
 
 impl App {
     fn new() -> (Self, Task<Message>) {
-        let app = Self {
+        let mut app = Self {
             feed: FeedState::new(),
             inspector: InspectorState::new(),
             sidebar: SidebarState::new(),
@@ -53,6 +55,9 @@ impl App {
             sidebar_width: 220.0,
             sidebar_dragging: false,
         };
+        if app.sidebar.connections.is_empty() {
+            app.sidebar.dialog = Some(ui::dialog::ConnectionDialogState::new());
+        }
         (app, Task::none())
     }
 
@@ -89,9 +94,34 @@ impl App {
             Message::Inspector(m) => {
                 self.inspector.update(m);
             }
-            Message::Sidebar(m) => {
+            Message::Sidebar(ref m) => {
+                match m {
+                    SidebarMsg::Connections(ConnectionsMsg::DialogConnect) => {
+                        self.sidebar.update(m.clone());
+                        return Task::perform(
+                            async {
+                                tokio::time::sleep(Duration::from_millis(800)).await;
+                                Result::<u16, String>::Ok(27117)
+                            },
+                            |r| Message::Sidebar(SidebarMsg::Connections(
+                                ConnectionsMsg::DialogConnectResult(r)
+                            )),
+                        );
+                    }
+                    SidebarMsg::Connections(ConnectionsMsg::DialogCopyUri) => {
+                        if let Some(d) = &self.sidebar.dialog {
+                            let uri = format!(
+                                "mongodb://localhost:{}/?directConnection=true",
+                                d.proxy_port
+                            );
+                            return iced::clipboard::write::<Message>(uri);
+                        }
+                    }
+                    _ => {}
+                }
+                // Default: delegate to sidebar
                 self.sidebar.update(m.clone());
-                if let SidebarMsg::Databases(_) = &m {
+                if let SidebarMsg::Databases(_) = m {
                     self.feed.filter.set_scope(
                         self.sidebar.active_db(),
                         self.sidebar.active_coll(),
@@ -205,7 +235,7 @@ impl App {
         .spacing(0)
         .height(Length::Fill);
 
-        container(
+        let base: Element<Message> = container(
             column![top, body, status].spacing(0)
         )
         .width(Length::Fill)
@@ -215,7 +245,22 @@ impl App {
             border: iced::Border { color: border_color, width: 0.0, radius: 0.0.into() },
             ..Default::default()
         })
-        .into()
+        .into();
+
+        if let Some(dialog_state) = &self.sidebar.dialog {
+            let dialog_palette = self.theme.palette();
+            stack![
+                base,
+                dialog_view(
+                    dialog_state,
+                    |m| Message::Sidebar(SidebarMsg::Connections(m)),
+                    &dialog_palette,
+                )
+            ]
+            .into()
+        } else {
+            base
+        }
     }
 
     fn subscription(&self) -> Subscription<Message> {
