@@ -604,7 +604,7 @@ pub fn dialog_view<Msg: Clone + 'static>(
     .width(700)
     .style(move |_| container::Style {
         background: Some(iced::Background::Color(bg2)),
-        border: Border { color: ok, width: 1.0, radius: 8.0.into() },
+        border: Border { color: border, width: 1.0, radius: 8.0.into() },
         ..Default::default()
     });
 
