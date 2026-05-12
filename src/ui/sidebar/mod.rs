@@ -222,6 +222,7 @@ impl SidebarState {
                 ConnectionsMsg::DialogCopyUri => {
                     // handled in App::update to produce clipboard Task
                 }
+                ConnectionsMsg::DialogNoop => {}
             },
             SidebarMsg::Databases(m) => match m {
                 DatabasesMsg::ToggleDb(name) => apply_toggle_db(&mut self.databases, &name),
