@@ -16,7 +16,7 @@ use iced::{
     widget::{column, container, row, scrollable, text},
     Border, Element, Length, Padding,
 };
-use crate::{data::model::QueryEntry, theme::Palette};
+use crate::{data::model::QueryEntry, theme::Palette, ui::dialog::ConnectionDialogState};
 
 #[derive(Debug, Clone)]
 pub enum SidebarMsg {
@@ -31,18 +31,14 @@ pub struct SidebarState {
     pub connections: Vec<ConnectionItem>,
     pub clients: Vec<ClientItem>,
     pub saved_views: Vec<SavedView>,
+    pub dialog: Option<ConnectionDialogState>,
 }
 
 impl SidebarState {
     pub fn new() -> Self {
         Self {
-            connections: vec![ConnectionItem {
-                id: 0,
-                label: "localhost".into(),
-                topology: "direct".into(),
-                active: true,
-                live: true,
-            }],
+            connections: vec![],   // empty → dialog opens on launch
+            dialog: None,
             databases: vec![
                 DatabaseItem {
                     name: "shop".into(),
@@ -144,7 +140,89 @@ impl SidebarState {
                         c.active = c.id == id;
                     }
                 }
-                ConnectionsMsg::Add => {}
+                ConnectionsMsg::Add => {
+                    if self.dialog.is_none() {
+                        self.dialog = Some(ConnectionDialogState::new());
+                    }
+                }
+                ConnectionsMsg::DialogUriChanged(s) => {
+                    if let Some(d) = &mut self.dialog {
+                        d.uri = s;
+                        d.error = None;
+                    }
+                }
+                ConnectionsMsg::DialogNameChanged(s) => {
+                    if let Some(d) = &mut self.dialog {
+                        d.name = s;
+                    }
+                }
+                ConnectionsMsg::DialogColorChanged(c) => {
+                    if let Some(d) = &mut self.dialog {
+                        d.color = c;
+                    }
+                }
+                ConnectionsMsg::DialogConnect => {
+                    if let Some(d) = &mut self.dialog {
+                        d.step = crate::ui::dialog::DialogStep::Step1 { connecting: true };
+                        d.error = None;
+                    }
+                }
+                ConnectionsMsg::DialogConnectResult(Ok(port)) => {
+                    if let Some(d) = &mut self.dialog {
+                        d.proxy_port = port;
+                        d.step = crate::ui::dialog::DialogStep::Step2;
+                    }
+                }
+                ConnectionsMsg::DialogConnectResult(Err(e)) => {
+                    if let Some(d) = &mut self.dialog {
+                        d.step = crate::ui::dialog::DialogStep::Step1 { connecting: false };
+                        d.error = Some(e);
+                    }
+                }
+                ConnectionsMsg::DialogBack => {
+                    if let Some(d) = &mut self.dialog {
+                        d.step = crate::ui::dialog::DialogStep::Step1 { connecting: false };
+                    }
+                }
+                ConnectionsMsg::DialogDone => {
+                    if let Some(d) = &self.dialog {
+                        let next_id = self.connections.iter().map(|c| c.id).max().unwrap_or(0) + 1;
+                        let label = if d.name.is_empty() {
+                            d.uri
+                                .trim_start_matches("mongodb://")
+                                .trim_start_matches("mongodb+srv://")
+                                .split('/')
+                                .next()
+                                .unwrap_or("connection")
+                                .to_owned()
+                        } else {
+                            d.name.clone()
+                        };
+                        let topology = format!("direct · proxy :{}", d.proxy_port);
+                        self.connections.push(ConnectionItem {
+                            id: next_id,
+                            label,
+                            topology,
+                            uri: d.uri.clone(),
+                            proxy_port: d.proxy_port,
+                            color: d.color,
+                            active: true,
+                            live: true,
+                        });
+                        let last = self.connections.len() - 1;
+                        for (i, c) in self.connections.iter_mut().enumerate() {
+                            c.active = i == last;
+                        }
+                    }
+                    self.dialog = None;
+                }
+                ConnectionsMsg::DialogCancel => {
+                    self.dialog = None;
+                }
+                ConnectionsMsg::DialogCopyUri => {
+                    // handled in App::update to produce clipboard Task
+                }
+                ConnectionsMsg::DialogNoop => {}
             },
             SidebarMsg::Databases(m) => match m {
                 DatabasesMsg::ToggleDb(name) => apply_toggle_db(&mut self.databases, &name),
@@ -214,6 +292,7 @@ impl SidebarState {
             section_header("CONNECTIONS".into(), None),
             connections_panel(
                 &self.connections,
+                self.dialog.is_some(),
                 move |m| on_msg(SidebarMsg::Connections(m)),
                 palette,
             ),

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mongoscope — New Connection Wizard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #111;
+    font-family: monospace;
+    font-size: 12px;
+    color: #ccc;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+
+  .scene-label {
+    color: #444;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  /* ── Modal shell ── */
+  .modal {
+    width: 700px;
+    background: #1c1c1c;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  }
+
+  /* ── Header ── */
+  .modal-header {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid #2a2a2a;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .modal-close {
+    color: #555;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+
+  /* ── Arrow step indicator ── */
+  .steps {
+    display: flex;
+    font-size: 10px;
+  }
+  .step {
+    padding: 4px 16px 4px 12px;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%);
+  }
+  .step + .step {
+    padding-left: 20px;
+    margin-left: 2px;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%, 8px 50%);
+  }
+  .step.active   { background: #00a96e; color: #fff; font-weight: bold; }
+  .step.done     { background: #1a3d2b; color: #00a96e; }
+  .step.inactive { background: #2a2a2a; color: #555; }
+
+  /* ── Body layout ── */
+  .modal-body {
+    display: flex;
+  }
+  .modal-form {
+    flex: 1;
+    padding: 18px 24px;
+    border-right: 1px solid #2a2a2a;
+  }
+  .modal-help {
+    width: 200px;
+    padding: 18px 16px;
+    background: #171717;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .modal-content {
+    padding: 20px 24px;
+  }
+
+  /* ── Form elements ── */
+  .field { margin-bottom: 14px; }
+  .field-row { display: flex; gap: 12px; }
+  .field-label {
+    color: #aaa;
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+  .field-label .hint { color: #555; }
+
+  textarea, input {
+    width: 100%;
+    background: #141414;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    color: #ccc;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 6px 8px;
+    outline: none;
+    resize: vertical;
+  }
+  textarea { height: 66px; padding: 8px; }
+
+  .select-mock {
+    background: #141414;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 6px 8px;
+    display: flex;
+    justify-content: space-between;
+    color: #555;
+  }
+
+  /* ── Help cards ── */
+  .help-card {
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 10px;
+  }
+  .help-card-title {
+    color: #ccc;
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+  .help-card-body {
+    color: #555;
+    font-size: 10px;
+    line-height: 1.4;
+    margin-bottom: 4px;
+  }
+  .help-card-link { color: #00a96e; font-size: 10px; }
+
+  /* ── Footer ── */
+  .modal-footer {
+    padding: 12px 24px;
+    border-top: 1px solid #2a2a2a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .btn {
+    background: none;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    color: #aaa;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 5px 14px;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: #00a96e;
+    border: none;
+    color: #fff;
+    font-weight: bold;
+  }
+
+  /* ── Step 2 specific ── */
+  .success-banner {
+    background: #0d2e1e;
+    border: 1px solid #1a5c3a;
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .success-icon { color: #00a96e; font-size: 14px; }
+  .success-title { color: #00a96e; font-size: 11px; font-weight: bold; }
+  .success-sub   { color: #555; font-size: 10px; }
+
+  .proxy-uri-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 6px;
+  }
+  .proxy-uri {
+    flex: 1;
+    background: #141414;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #00a96e;
+    font-size: 11px;
+    word-break: break-all;
+  }
+
+  .routing-table {
+    background: #171717;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 14px;
+    font-size: 10px;
+    color: #555;
+    line-height: 1.8;
+    margin-top: 14px;
+  }
+  .routing-row {
+    display: flex;
+    justify-content: space-between;
+  }
+  .routing-row .val { color: #ccc; }
+  .routing-row .val.ok { color: #00a96e; }
+
+  /* ── Connecting state ── */
+  .field-disabled textarea,
+  .field-disabled input,
+  .field-disabled .select-mock {
+    background: #0f0f0f;
+    border-color: #2a2a2a;
+    color: #555;
+  }
+  .field-disabled .field-label { color: #666; }
+  .connecting-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #888;
+    font-size: 11px;
+    margin-top: 14px;
+  }
+  .connecting-status .spinner { color: #00a96e; font-size: 13px; }
+  .btn-connecting {
+    background: #1a4a3a;
+    border: none;
+    color: #4a8a6a;
+    font-weight: bold;
+    cursor: not-allowed;
+  }
+
+  /* ── Error state ── */
+  .field-error textarea { border-color: #c0392b; }
+  .field-error-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 6px;
+    color: #c0392b;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .field-error-msg .icon { font-size: 11px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     STEP 1: Target server
+════════════════════════════════════════════ -->
+<div>
+  <div class="scene-label">Step 1 of 2 — Target server</div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">New Connection</div>
+        <div class="steps">
+          <div class="step active">1 · Target server</div>
+          <div class="step inactive">2 · Proxy string</div>
+        </div>
+      </div>
+      <div class="modal-close">✕</div>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-form">
+
+        <div class="field">
+          <div class="field-label">Target URI <span class="hint">ⓘ</span></div>
+          <textarea>mongodb://localhost:27017/</textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field" style="flex:1">
+            <div class="field-label">Name</div>
+            <input type="text" placeholder="My cluster" />
+          </div>
+          <div class="field" style="width:150px">
+            <div class="field-label">Color</div>
+            <div class="select-mock"><span>No color</span><span>▾</span></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-help">
+        <div class="help-card">
+          <div class="help-card-title">Find connection string in Atlas</div>
+          <div class="help-card-body">Cluster view → Connect button → select driver</div>
+          <div class="help-card-link">See example ↗</div>
+        </div>
+        <div class="help-card">
+          <div class="help-card-title">Connection string format</div>
+          <div class="help-card-link">See example ↗</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn">Cancel</button>
+      <button class="btn btn-primary">Connect →</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     STEP 1: Connecting (in-progress)
+════════════════════════════════════════════ -->
+<div>
+  <div class="scene-label">Step 1 — Connecting (in progress)</div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">New Connection</div>
+        <div class="steps">
+          <div class="step active">1 · Target server</div>
+          <div class="step inactive">2 · Proxy string</div>
+        </div>
+      </div>
+      <div class="modal-close">✕</div>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-form">
+
+        <div class="field field-disabled">
+          <div class="field-label">Target URI <span class="hint">ⓘ</span></div>
+          <textarea disabled>mongodb://localhost:27017/</textarea>
+        </div>
+
+        <div class="field-row field-disabled">
+          <div class="field" style="flex:1">
+            <div class="field-label">Name</div>
+            <input type="text" disabled value="My cluster" />
+          </div>
+          <div class="field" style="width:150px">
+            <div class="field-label">Color</div>
+            <div class="select-mock"><span>No color</span><span>▾</span></div>
+          </div>
+        </div>
+
+        <div class="connecting-status">
+          <span class="spinner">◌</span>
+          <span>Connecting to localhost:27017…</span>
+        </div>
+
+      </div>
+      <div class="modal-help">
+        <div class="help-card">
+          <div class="help-card-title">Find connection string in Atlas</div>
+          <div class="help-card-body">Cluster view → Connect button → select driver</div>
+          <div class="help-card-link">See example ↗</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn">Cancel</button>
+      <button class="btn btn-connecting">Connecting…</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     STEP 1: Connection failed
+════════════════════════════════════════════ -->
+<div>
+  <div class="scene-label">Step 1 — Connection failed</div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">New Connection</div>
+        <div class="steps">
+          <div class="step active">1 · Target server</div>
+          <div class="step inactive">2 · Proxy string</div>
+        </div>
+      </div>
+      <div class="modal-close">✕</div>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-form">
+
+        <div class="field field-error">
+          <div class="field-label">Target URI <span class="hint">ⓘ</span></div>
+          <textarea>mongodb://localhost:27017/</textarea>
+          <div class="field-error-msg">
+            <span class="icon">✕</span>
+            <span>Connection refused — no server at localhost:27017</span>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field" style="flex:1">
+            <div class="field-label">Name</div>
+            <input type="text" value="My cluster" />
+          </div>
+          <div class="field" style="width:150px">
+            <div class="field-label">Color</div>
+            <div class="select-mock"><span>No color</span><span>▾</span></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-help">
+        <div class="help-card">
+          <div class="help-card-title">Find connection string in Atlas</div>
+          <div class="help-card-body">Cluster view → Connect button → select driver</div>
+          <div class="help-card-link">See example ↗</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn">Cancel</button>
+      <button class="btn btn-primary">Connect →</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     STEP 2: Proxy string (post-connect)
+════════════════════════════════════════════ -->
+<div>
+  <div class="scene-label">Step 2 of 2 — Proxy string</div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">New Connection</div>
+        <div class="steps">
+          <div class="step done">✓ Target server</div>
+          <div class="step active">2 · Proxy string</div>
+        </div>
+      </div>
+      <div class="modal-close">✕</div>
+    </div>
+
+    <div class="modal-content">
+
+      <div class="success-banner">
+        <span class="success-icon">✓</span>
+        <div>
+          <div class="success-title">Connected to localhost:27017</div>
+          <div class="success-sub">Mongoscope proxy is ready on port 27117</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Point your app to this URI instead</div>
+        <div class="proxy-uri-row">
+          <div class="proxy-uri">mongodb://localhost:27117/?directConnection=true</div>
+          <button class="btn" style="white-space:nowrap">Copy</button>
+        </div>
+        <div style="color:#555;font-size:10px;">
+          Same credentials — swap the host:port and add <code style="color:#666">directConnection=true</code>.
+        </div>
+      </div>
+
+      <div class="routing-table">
+        <div class="routing-row"><span>Your app connects to</span><span class="val">localhost:27117</span></div>
+        <div class="routing-row"><span>Mongoscope proxies to</span><span class="val">localhost:27017</span></div>
+        <div class="routing-row"><span>Traffic inspection</span><span class="val ok">active</span></div>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn">← Back</button>
+      <button class="btn btn-primary">Done</button>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
