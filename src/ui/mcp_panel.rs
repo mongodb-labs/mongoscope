@@ -4,7 +4,9 @@ use iced::{
 };
 use crate::theme::Palette;
 
-#[derive(Debug, Clone, PartialEq)]
+pub const MOCK_MCP_PORT: u16 = 3717;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum McpServerState {
     Stopped,
     Starting,
@@ -404,15 +406,15 @@ mod tests {
     fn on_started_transitions_to_running_port_3717() {
         let mut p = McpPanelState::new();
         p.begin_start();
-        p.on_started(3717);
-        assert_eq!(p.server, McpServerState::Running { port: 3717 });
+        p.on_started(MOCK_MCP_PORT);
+        assert_eq!(p.server, McpServerState::Running { port: MOCK_MCP_PORT });
     }
 
     #[test]
     fn stop_transitions_running_to_stopped() {
         let mut p = McpPanelState::new();
         p.begin_start();
-        p.on_started(3717);
+        p.on_started(MOCK_MCP_PORT);
         p.stop();
         assert_eq!(p.server, McpServerState::Stopped);
     }
