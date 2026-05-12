@@ -225,6 +225,45 @@
   }
   .routing-row .val { color: #ccc; }
   .routing-row .val.ok { color: #00a96e; }
+
+  /* ── Connecting state ── */
+  .field-disabled textarea,
+  .field-disabled input,
+  .field-disabled .select-mock {
+    background: #0f0f0f;
+    border-color: #2a2a2a;
+    color: #555;
+  }
+  .field-disabled .field-label { color: #666; }
+  .connecting-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #888;
+    font-size: 11px;
+    margin-top: 14px;
+  }
+  .connecting-status .spinner { color: #00a96e; font-size: 13px; }
+  .btn-connecting {
+    background: #1a4a3a;
+    border: none;
+    color: #4a8a6a;
+    font-weight: bold;
+    cursor: not-allowed;
+  }
+
+  /* ── Error state ── */
+  .field-error textarea { border-color: #c0392b; }
+  .field-error-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 6px;
+    color: #c0392b;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .field-error-msg .icon { font-size: 11px; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -275,6 +314,127 @@
         </div>
         <div class="help-card">
           <div class="help-card-title">Connection string format</div>
+          <div class="help-card-link">See example ↗</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn">Cancel</button>
+      <button class="btn btn-primary">Connect →</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     STEP 1: Connecting (in-progress)
+════════════════════════════════════════════ -->
+<div>
+  <div class="scene-label">Step 1 — Connecting (in progress)</div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">New Connection</div>
+        <div class="steps">
+          <div class="step active">1 · Target server</div>
+          <div class="step inactive">2 · Proxy string</div>
+        </div>
+      </div>
+      <div class="modal-close">✕</div>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-form">
+
+        <div class="field field-disabled">
+          <div class="field-label">Target URI <span class="hint">ⓘ</span></div>
+          <textarea disabled>mongodb://localhost:27017/</textarea>
+        </div>
+
+        <div class="field-row field-disabled">
+          <div class="field" style="flex:1">
+            <div class="field-label">Name</div>
+            <input type="text" disabled value="My cluster" />
+          </div>
+          <div class="field" style="width:150px">
+            <div class="field-label">Color</div>
+            <div class="select-mock"><span>No color</span><span>▾</span></div>
+          </div>
+        </div>
+
+        <div class="connecting-status">
+          <span class="spinner">◌</span>
+          <span>Connecting to localhost:27017…</span>
+        </div>
+
+      </div>
+      <div class="modal-help">
+        <div class="help-card">
+          <div class="help-card-title">Find connection string in Atlas</div>
+          <div class="help-card-body">Cluster view → Connect button → select driver</div>
+          <div class="help-card-link">See example ↗</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn">Cancel</button>
+      <button class="btn btn-connecting">Connecting…</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     STEP 1: Connection failed
+════════════════════════════════════════════ -->
+<div>
+  <div class="scene-label">Step 1 — Connection failed</div>
+  <div class="modal">
+
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">New Connection</div>
+        <div class="steps">
+          <div class="step active">1 · Target server</div>
+          <div class="step inactive">2 · Proxy string</div>
+        </div>
+      </div>
+      <div class="modal-close">✕</div>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-form">
+
+        <div class="field field-error">
+          <div class="field-label">Target URI <span class="hint">ⓘ</span></div>
+          <textarea>mongodb://localhost:27017/</textarea>
+          <div class="field-error-msg">
+            <span class="icon">✕</span>
+            <span>Connection refused — no server at localhost:27017</span>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field" style="flex:1">
+            <div class="field-label">Name</div>
+            <input type="text" value="My cluster" />
+          </div>
+          <div class="field" style="width:150px">
+            <div class="field-label">Color</div>
+            <div class="select-mock"><span>No color</span><span>▾</span></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-help">
+        <div class="help-card">
+          <div class="help-card-title">Find connection string in Atlas</div>
+          <div class="help-card-body">Cluster view → Connect button → select driver</div>
           <div class="help-card-link">See example ↗</div>
         </div>
       </div>
