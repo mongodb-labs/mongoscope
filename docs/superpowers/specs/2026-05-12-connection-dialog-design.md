@@ -5,7 +5,12 @@
 
 ## Overview
 
-Two-step modal wizard for adding a new MongoDB connection. Triggered by the "+" button in the sidebar CONNECTIONS panel. Mongoscope is a MITM proxy, so step 1 collects the target server, step 2 presents the proxy URI the user's app should use.
+Two-step modal wizard for adding a new MongoDB connection. Mongoscope is a MITM proxy, so step 1 collects the target server, step 2 presents the proxy URI the user's app should use.
+
+## Triggers
+
+- **App launch** — dialog opens automatically on startup when there are no saved connections.
+- **Sidebar "+" button** — `ConnectionsMsg::Add` opens the dialog at any time.
 
 Visual reference: `_designs/connection-dialog/connection-wizard.html`  
 Screenshot: `_designs/connection-dialog/screenshot-both-steps.png`
