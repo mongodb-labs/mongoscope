@@ -1,6 +1,7 @@
 pub mod dialog;
 pub mod feed;
 pub mod inspector;
+pub mod mcp_panel;
 pub mod sidebar;
 pub mod statusbar;
 pub mod topbar;

@@ -1,21 +1,26 @@
 pub mod capture_indicator;
 pub mod conn_bar;
 pub mod logo;
+pub mod mcp_button;
 pub mod menu_bar;
 
 pub use capture_indicator::capture_indicator;
 pub use conn_bar::{conn_bar, ConnInfo};
 pub use logo::logo;
+pub use mcp_button::mcp_button;
 pub use menu_bar::{menu_bar, MenuMsg};
 
 use iced::{widget::{container, row}, Border, Element, Length, Padding};
 use crate::theme::Palette;
+use crate::ui::mcp_panel::McpServerState;
 
 pub fn topbar<Msg: Clone + 'static>(
     conn: &ConnInfo,
     capturing: bool,
     on_menu: impl Fn(MenuMsg) -> Msg + 'static,
     on_capture_toggle: Msg,
+    mcp_server: &McpServerState,
+    on_mcp_toggle: Msg,
     palette: &Palette,
 ) -> Element<'static, Msg> {
     let bg = palette.bg1;
@@ -27,7 +32,9 @@ pub fn topbar<Msg: Clone + 'static>(
             menu_bar(on_menu, palette),
             iced::widget::Space::new(Length::Fill, 0),
             conn_bar(conn, palette),
-            iced::widget::Space::new(12, 0),
+            iced::widget::Space::new(8, 0),
+            mcp_button(mcp_server, on_mcp_toggle, palette),
+            iced::widget::Space::new(8, 0),
             capture_indicator(capturing, on_capture_toggle, palette),
             iced::widget::Space::new(8, 0),
         ]
