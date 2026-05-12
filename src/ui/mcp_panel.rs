@@ -110,14 +110,8 @@ fn tool_row_el<'a, Msg: 'a>(name: &'a str, desc: &'a str, palette: &Palette) -> 
     let name_color = palette.op_read;
     let desc_color = palette.fg_dim2;
     column![
-        text(name)
-            .size(11)
-            .color(name_color)
-            .font(Font::MONOSPACE),
-        text(desc)
-            .size(10)
-            .color(desc_color)
-            .font(Font::MONOSPACE),
+        text(name).size(11).color(name_color).font(Font::MONOSPACE),
+        text(desc).size(10).color(desc_color).font(Font::MONOSPACE),
     ]
     .spacing(2)
     .into()

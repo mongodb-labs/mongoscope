@@ -13,11 +13,7 @@ pub enum MenuMsg {
     Help,
 }
 
-fn menu_btn<'a, Msg: Clone + 'a>(
-    label: &'a str,
-    msg: Msg,
-    palette: &Palette,
-) -> Element<'a, Msg> {
+fn menu_btn<'a, Msg: Clone + 'a>(label: &'a str, msg: Msg, palette: &Palette) -> Element<'a, Msg> {
     let fg = palette.fg;
     let bg_hover = palette.bg_hover;
 
