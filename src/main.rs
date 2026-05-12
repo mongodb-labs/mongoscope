@@ -182,7 +182,7 @@ impl App {
                     }
                 }
                 McpMsg::Started => {
-                    self.mcp_panel.on_started(3717);
+                    self.mcp_panel.on_started(ui::mcp_panel::MOCK_MCP_PORT);
                     Task::none()
                 }
                 McpMsg::CopyConfig => {
