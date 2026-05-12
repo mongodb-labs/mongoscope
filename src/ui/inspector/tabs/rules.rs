@@ -335,53 +335,43 @@ fn ghost_label<'a, Msg: 'a>(
     bg: Color,
     border: Color,
 ) -> Element<'a, Msg> {
-    container(
-        text(label)
-            .size(10)
-            .color(fg)
-            .font(iced::Font::MONOSPACE),
-    )
-    .padding(Padding {
-        top: 3.0,
-        bottom: 3.0,
-        left: 10.0,
-        right: 10.0,
-    })
-    .style(move |_| container::Style {
-        background: Some(iced::Background::Color(bg)),
-        border: Border {
-            color: border,
-            width: 1.0,
-            radius: 5.0.into(),
-        },
-        ..Default::default()
-    })
-    .into()
+    container(text(label).size(10).color(fg).font(iced::Font::MONOSPACE))
+        .padding(Padding {
+            top: 3.0,
+            bottom: 3.0,
+            left: 10.0,
+            right: 10.0,
+        })
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(bg)),
+            border: Border {
+                color: border,
+                width: 1.0,
+                radius: 5.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
 }
 
 fn ghost_label_solid<'a, Msg: 'a>(label: &'a str, fg: Color, bg: Color) -> Element<'a, Msg> {
-    container(
-        text(label)
-            .size(10)
-            .color(fg)
-            .font(iced::Font::MONOSPACE),
-    )
-    .padding(Padding {
-        top: 3.0,
-        bottom: 3.0,
-        left: 10.0,
-        right: 10.0,
-    })
-    .style(move |_| container::Style {
-        background: Some(iced::Background::Color(bg)),
-        border: Border {
-            color: bg,
-            width: 1.0,
-            radius: 5.0.into(),
-        },
-        ..Default::default()
-    })
-    .into()
+    container(text(label).size(10).color(fg).font(iced::Font::MONOSPACE))
+        .padding(Padding {
+            top: 3.0,
+            bottom: 3.0,
+            left: 10.0,
+            right: 10.0,
+        })
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(bg)),
+            border: Border {
+                color: bg,
+                width: 1.0,
+                radius: 5.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
 }
 
 fn ghost_label_danger<'a, Msg: 'a>(
@@ -396,26 +386,21 @@ fn ghost_label_danger<'a, Msg: 'a>(
         b: fg.b,
         a: 0.4,
     };
-    container(
-        text(label)
-            .size(10)
-            .color(fg)
-            .font(iced::Font::MONOSPACE),
-    )
-    .padding(Padding {
-        top: 3.0,
-        bottom: 3.0,
-        left: 10.0,
-        right: 10.0,
-    })
-    .style(move |_| container::Style {
-        background: Some(iced::Background::Color(bg)),
-        border: Border {
-            color: border_c,
-            width: 1.0,
-            radius: 5.0.into(),
-        },
-        ..Default::default()
-    })
-    .into()
+    container(text(label).size(10).color(fg).font(iced::Font::MONOSPACE))
+        .padding(Padding {
+            top: 3.0,
+            bottom: 3.0,
+            left: 10.0,
+            right: 10.0,
+        })
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(bg)),
+            border: Border {
+                color: border_c,
+                width: 1.0,
+                radius: 5.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
 }

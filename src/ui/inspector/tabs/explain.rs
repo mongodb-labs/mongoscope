@@ -33,28 +33,23 @@ fn action_label<'a, Msg: 'a>(
     } else {
         (palette.bg, palette.fg_dim, palette.border)
     };
-    container(
-        text(label)
-            .size(fs)
-            .color(fg)
-            .font(iced::Font::MONOSPACE),
-    )
-    .padding(Padding {
-        top: 3.0,
-        bottom: 3.0,
-        left: 10.0,
-        right: 10.0,
-    })
-    .style(move |_| container::Style {
-        background: Some(iced::Background::Color(bg)),
-        border: Border {
-            color: border,
-            width: 1.0,
-            radius: 5.0.into(),
-        },
-        ..Default::default()
-    })
-    .into()
+    container(text(label).size(fs).color(fg).font(iced::Font::MONOSPACE))
+        .padding(Padding {
+            top: 3.0,
+            bottom: 3.0,
+            left: 10.0,
+            right: 10.0,
+        })
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(bg)),
+            border: Border {
+                color: border,
+                width: 1.0,
+                radius: 5.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
 }
 
 pub fn explain_tab<Msg: 'static>(
