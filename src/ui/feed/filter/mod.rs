@@ -81,6 +81,7 @@ impl FilterState {
         &'a self,
         on_msg: impl Fn(FilterMsg) -> Msg + 'static + Copy,
         on_pause: Msg,
+        on_clear: Msg,
         paused: bool,
         visible_count: usize,
         total_count: usize,
@@ -111,6 +112,17 @@ impl FilterState {
             ..Default::default()
         });
 
+        let clear_btn = button(
+            text("✕").size(11).color(fg_dim2).font(iced::Font::MONOSPACE)
+        )
+        .padding(Padding { top: 3.0, bottom: 3.0, left: 6.0, right: 6.0 })
+        .on_press(on_clear)
+        .style(move |_, _| button::Style {
+            background: None,
+            border: Border::default(),
+            ..Default::default()
+        });
+
         container(
             row![
                 search_input(
@@ -124,6 +136,7 @@ impl FilterState {
                 iced::widget::Space::new(Length::Fill, 0),
                 text(count_str).size(11).color(count_color).font(iced::Font::MONOSPACE),
                 pause_btn,
+                clear_btn,
             ]
             .spacing(8)
             .align_y(iced::Alignment::Center)
