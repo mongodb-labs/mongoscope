@@ -82,7 +82,6 @@ impl SidebarState {
             .map(|c| c.name.clone())
     }
 
-    #[allow(dead_code)]
     pub fn active_client(&self) -> Option<String> {
         self.active()?
             .clients

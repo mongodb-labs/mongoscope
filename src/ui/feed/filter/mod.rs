@@ -85,8 +85,6 @@ impl FilterState {
 
     /// Replace any existing `app:` token in `self.text` with the given value,
     /// preserving all other tokens. Passing `None` removes the token.
-    // TODO: remove when client-filter wiring is complete
-    #[allow(dead_code)]
     pub fn set_app(&mut self, app: Option<String>) {
         let rest: String = self
             .text
