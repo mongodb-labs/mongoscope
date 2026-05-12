@@ -1,9 +1,3 @@
-use iced::{
-    widget::{button, column, container, mouse_area, row, text},
-    Alignment, Background, Border, Color, Element, Font, Length, Padding,
-};
-use crate::theme::Palette;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum McpServerState {
     Stopped,
