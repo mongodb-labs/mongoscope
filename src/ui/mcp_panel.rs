@@ -45,9 +45,9 @@ impl McpPanelState {
         }
     }
 
-    pub fn on_started(&mut self) {
+    pub fn on_started(&mut self, port: u16) {
         if matches!(self.server, McpServerState::Starting) {
-            self.server = McpServerState::Running { port: 3717 };
+            self.server = McpServerState::Running { port };
         }
     }
 
@@ -97,18 +97,141 @@ fn tool_row_el<Msg: 'static>(name: &str, desc: &str, palette: &Palette) -> Eleme
     .into()
 }
 
+fn config_section_view<Msg: Clone + 'static>(
+    state: &McpPanelState,
+    on_msg: impl Fn(McpMsg) -> Msg + 'static + Copy,
+    palette: &Palette,
+) -> Element<'static, Msg> {
+    let fg_dim  = palette.fg_dim;
+    let fg_dim2 = palette.fg_dim2;
+    let bg1     = palette.bg1;
+    let border2 = palette.border2;
+
+    // sec_label helper (duplicated here for independence from overlay_view)
+    let sec_label = |s: &'static str| -> Element<'static, Msg> {
+        container(
+            text(s).size(9).color(fg_dim2).font(Font::MONOSPACE)
+        )
+        .width(Length::Fill)
+        .padding(Padding { top: 0.0, bottom: 4.0, left: 0.0, right: 0.0 })
+        .into()
+    };
+
+    if let McpServerState::Running { port } = &state.server {
+        let p = *port;
+        let config_text = format!(
+            "\"mongoscope\": {{\n  \"url\": \"http://localhost:{p}/mcp\"\n}}"
+        );
+        let code_block = container(
+            text(config_text).size(10).color(fg_dim).font(Font::MONOSPACE)
+        )
+        .width(Length::Fill)
+        .padding(Padding::from([10, 12]))
+        .style(move |_| container::Style {
+            background: Some(Background::Color(bg1)),
+            border: Border { color: border2, width: 1.0, radius: 4.0.into() },
+            ..Default::default()
+        });
+
+        let copy_btn = button(
+            text("Copy").size(10).color(fg_dim2).font(Font::MONOSPACE)
+        )
+        .on_press(on_msg(McpMsg::CopyConfig))
+        .padding(Padding::from([4, 10]))
+        .style(move |_, _| button::Style {
+            background: Some(Background::Color(bg1)),
+            border: Border { color: border2, width: 1.0, radius: 3.0.into() },
+            text_color: fg_dim2,
+            ..Default::default()
+        });
+
+        column![
+            sec_label("CONFIGURE IN MCP.JSON"),
+            code_block,
+            container(copy_btn)
+                .width(Length::Fill)
+                .align_x(iced::alignment::Horizontal::Right),
+        ]
+        .spacing(6)
+        .into()
+    } else {
+        let pending_color = Color { a: 0.4, ..fg_dim2 };
+        container(
+            text("Port assigned on start")
+                .size(10)
+                .color(pending_color)
+                .font(Font::MONOSPACE),
+        )
+        .width(Length::Fill)
+        .padding(Padding::from([14, 12]))
+        .style(move |_| container::Style {
+            background: Some(Background::Color(bg1)),
+            border: Border { color: border2, width: 1.0, radius: 4.0.into() },
+            ..Default::default()
+        })
+        .into()
+    }
+}
+
+fn footer_view<Msg: Clone + 'static>(
+    state: &McpPanelState,
+    on_msg: impl Fn(McpMsg) -> Msg + 'static + Copy,
+    palette: &Palette,
+) -> Element<'static, Msg> {
+    let bg1    = palette.bg1;
+    let fg_dim = palette.fg_dim;
+    let border = palette.border;
+    let ok     = palette.ok;
+    let warn   = palette.warn;
+
+    let (btn_text, btn_bg, btn_fg, btn_border, btn_enabled) = match &state.server {
+        McpServerState::Stopped => (
+            "Start server", ok, palette.accent_fg, Color::TRANSPARENT, true
+        ),
+        McpServerState::Starting => (
+            "Starting…", bg1, warn, warn, false
+        ),
+        McpServerState::Running { .. } => (
+            "Stop server", bg1, fg_dim, border, true
+        ),
+    };
+
+    let mut footer_btn = button(
+        text(btn_text).size(11).color(btn_fg).font(Font::MONOSPACE)
+    )
+    .padding(Padding { top: 7.0, bottom: 7.0, left: 0.0, right: 0.0 })
+    .style(move |_, _| button::Style {
+        background: Some(Background::Color(btn_bg)),
+        border: Border { color: btn_border, width: 1.0, radius: 3.0.into() },
+        text_color: btn_fg,
+        ..Default::default()
+    });
+
+    if btn_enabled {
+        footer_btn = footer_btn.on_press(on_msg(McpMsg::StartStop));
+    }
+
+    container(
+        container(footer_btn).width(Length::Fill)
+    )
+    .width(Length::Fill)
+    .padding(Padding::from([12, 16]))
+    .style(move |_| container::Style {
+        border: Border { color: border, width: 1.0, radius: 0.0.into() },
+        ..Default::default()
+    })
+    .into()
+}
+
 pub fn overlay_view<Msg: Clone + 'static>(
     state: &McpPanelState,
     on_msg: impl Fn(McpMsg) -> Msg + 'static + Copy,
     palette: &Palette,
 ) -> Element<'static, Msg> {
     let bg2     = palette.bg2;
-    let bg1     = palette.bg1;
     let fg      = palette.fg;
-    let fg_dim  = palette.fg_dim;
     let fg_dim2 = palette.fg_dim2;
     let border  = palette.border;
-    let border2 = palette.border2;
     let ok      = palette.ok;
     let warn    = palette.warn;
 
@@ -178,60 +301,7 @@ pub fn overlay_view<Msg: Clone + 'static>(
     .spacing(8);
 
     // ── Config section ────────────────────────────────────────────────────────
-    let config_section: Element<Msg> = if let McpServerState::Running { port } = &state.server {
-        let p = *port;
-        let config_text = format!(
-            "\"mongoscope\": {{\n  \"url\": \"http://localhost:{p}/mcp\"\n}}"
-        );
-        let code_block = container(
-            text(config_text).size(10).color(fg_dim).font(Font::MONOSPACE)
-        )
-        .width(Length::Fill)
-        .padding(Padding::from([10, 12]))
-        .style(move |_| container::Style {
-            background: Some(Background::Color(bg1)),
-            border: Border { color: border2, width: 1.0, radius: 4.0.into() },
-            ..Default::default()
-        });
-
-        let copy_btn = button(
-            text("Copy").size(10).color(fg_dim2).font(Font::MONOSPACE)
-        )
-        .on_press(on_msg(McpMsg::CopyConfig))
-        .padding(Padding::from([4, 10]))
-        .style(move |_, _| button::Style {
-            background: Some(Background::Color(bg1)),
-            border: Border { color: border2, width: 1.0, radius: 3.0.into() },
-            text_color: fg_dim2,
-            ..Default::default()
-        });
-
-        column![
-            sec_label("CONFIGURE IN MCP.JSON"),
-            code_block,
-            container(copy_btn)
-                .width(Length::Fill)
-                .align_x(iced::alignment::Horizontal::Right),
-        ]
-        .spacing(6)
-        .into()
-    } else {
-        let pending_color = Color { a: 0.4, ..fg_dim2 };
-        container(
-            text("Port assigned on start")
-                .size(10)
-                .color(pending_color)
-                .font(Font::MONOSPACE),
-        )
-        .width(Length::Fill)
-        .padding(Padding::from([14, 12]))
-        .style(move |_| container::Style {
-            background: Some(Background::Color(bg1)),
-            border: Border { color: border2, width: 1.0, radius: 4.0.into() },
-            ..Default::default()
-        })
-        .into()
-    };
+    let config_section = config_section_view(state, on_msg, palette);
 
     // ── Body ──────────────────────────────────────────────────────────────────
     let body = container(
@@ -242,42 +312,7 @@ pub fn overlay_view<Msg: Clone + 'static>(
     .padding(Padding::from([14, 16]));
 
     // ── Footer button ─────────────────────────────────────────────────────────
-    let (btn_text, btn_bg, btn_fg, btn_border, btn_enabled) = match &state.server {
-        McpServerState::Stopped => (
-            "Start server", ok, palette.accent_fg, Color::TRANSPARENT, true
-        ),
-        McpServerState::Starting => (
-            "Starting…", bg1, warn, warn, false
-        ),
-        McpServerState::Running { .. } => (
-            "Stop server", bg1, fg_dim, border, true
-        ),
-    };
-
-    let mut footer_btn = button(
-        text(btn_text).size(11).color(btn_fg).font(Font::MONOSPACE)
-    )
-    .padding(Padding { top: 7.0, bottom: 7.0, left: 0.0, right: 0.0 })
-    .style(move |_, _| button::Style {
-        background: Some(Background::Color(btn_bg)),
-        border: Border { color: btn_border, width: 1.0, radius: 3.0.into() },
-        text_color: btn_fg,
-        ..Default::default()
-    });
-
-    if btn_enabled {
-        footer_btn = footer_btn.on_press(on_msg(McpMsg::StartStop));
-    }
-
-    let footer = container(
-        container(footer_btn).width(Length::Fill)
-    )
-    .width(Length::Fill)
-    .padding(Padding::from([12, 16]))
-    .style(move |_| container::Style {
-        border: Border { color: border, width: 1.0, radius: 0.0.into() },
-        ..Default::default()
-    });
+    let footer = footer_view(state, on_msg, palette);
 
     // ── Drawer panel ──────────────────────────────────────────────────────────
     let divider_style = move |_: &_| container::Style {
@@ -369,7 +404,7 @@ mod tests {
     fn on_started_transitions_to_running_port_3717() {
         let mut p = McpPanelState::new();
         p.begin_start();
-        p.on_started();
+        p.on_started(3717);
         assert_eq!(p.server, McpServerState::Running { port: 3717 });
     }
 
@@ -377,7 +412,7 @@ mod tests {
     fn stop_transitions_running_to_stopped() {
         let mut p = McpPanelState::new();
         p.begin_start();
-        p.on_started();
+        p.on_started(3717);
         p.stop();
         assert_eq!(p.server, McpServerState::Stopped);
     }
