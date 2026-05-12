@@ -2,9 +2,13 @@ mod data;
 mod theme;
 mod ui;
 
-use std::time::Duration;
-use iced::{mouse, widget::{column, container, mouse_area, row, scrollable, stack}, Element, Length, Subscription, Task};
 use data::{mock::MockSource, model::QueryEntry, source::DataSource};
+use iced::{
+    mouse,
+    widget::{column, container, mouse_area, row, scrollable, stack},
+    Element, Length, Subscription, Task,
+};
+use std::time::Duration;
 use theme::{Density, Theme};
 use ui::{
     dialog::dialog_view,
@@ -25,6 +29,8 @@ enum Message {
     ToggleTheme,
     ToggleDensity,
     ToggleCapture,
+    // TODO: remove when real backend is wired up — currently all mock data
+    #[allow(dead_code)]
     Menu(MenuMsg),
     SidebarResizeStart,
     SidebarResizeMove(f32),
@@ -63,15 +69,26 @@ impl App {
         match msg {
             Message::QueriesReceived(conn_id, entries) => {
                 let active_id = self.sidebar.active_id;
-                if let Some(conn) = self.sidebar.connections.iter_mut().find(|c| c.item.id == conn_id) {
-                    if !conn.capturing { return Task::none(); }
+                if let Some(conn) = self
+                    .sidebar
+                    .connections
+                    .iter_mut()
+                    .find(|c| c.item.id == conn_id)
+                {
+                    if !conn.capturing {
+                        return Task::none();
+                    }
                     conn.register_entries(&entries);
                     let mut added = 0usize;
                     for entry in entries {
-                        if conn.feed.push_entry(entry) { added += 1; }
+                        if conn.feed.push_entry(entry) {
+                            added += 1;
+                        }
                     }
                     let is_active = active_id == Some(conn_id);
-                    if added == 0 || !is_active { return Task::none(); }
+                    if added == 0 || !is_active {
+                        return Task::none();
+                    }
                     if conn.feed.scroll_locked {
                         let scrolling_up = conn.feed.scroll_y < conn.feed.prev_scroll_y;
                         if !scrolling_up {
@@ -111,9 +128,11 @@ impl App {
                                 tokio::time::sleep(Duration::from_millis(800)).await;
                                 Result::<u16, String>::Ok(27117)
                             },
-                            |r| Message::Sidebar(SidebarMsg::Connections(
-                                ConnectionsMsg::DialogConnectResult(r)
-                            )),
+                            |r| {
+                                Message::Sidebar(SidebarMsg::Connections(
+                                    ConnectionsMsg::DialogConnectResult(r),
+                                ))
+                            },
                         );
                     }
                     SidebarMsg::Connections(ConnectionsMsg::DialogCopyUri) => {
@@ -157,7 +176,7 @@ impl App {
             }
             Message::SidebarResizeMove(x) => {
                 if self.sidebar_dragging {
-                    self.sidebar_width = x.max(120.0).min(400.0);
+                    self.sidebar_width = x.clamp(120.0, 400.0);
                 }
                 Task::none()
             }
@@ -200,7 +219,7 @@ impl App {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         let palette = self.theme.palette();
         let fs = self.density.fs_base();
         let bg = palette.bg;
@@ -218,16 +237,22 @@ impl App {
         let top = topbar(
             &conn,
             capturing,
-            |m| Message::Menu(m),
+            Message::Menu,
             Message::ToggleCapture,
             &self.mcp_panel.server,
             Message::Mcp(McpMsg::Toggle),
             &palette,
         );
 
-        let (ops_per_sec, query_count, slow_count) = self.sidebar.active()
+        let (ops_per_sec, query_count, slow_count) = self
+            .sidebar
+            .active()
             .map(|c| {
-                let ops = if c.feed.entries.len() >= 10 { 12.5f32 } else { 0.0 };
+                let ops = if c.feed.entries.len() >= 10 {
+                    12.5f32
+                } else {
+                    0.0
+                };
                 let slow = c.feed.entries.iter().filter(|e| e.slow).count();
                 (ops, c.feed.entries.len(), slow)
             })
@@ -246,81 +271,73 @@ impl App {
             &palette,
         );
 
-        let sidebar_el = self.sidebar.view(|m| Message::Sidebar(m), &palette, self.sidebar_width);
+        let sidebar_el = self
+            .sidebar
+            .view(Message::Sidebar, &palette, self.sidebar_width);
 
         let resize_handle = mouse_area(
-            container(iced::widget::Space::new(4.0, Length::Fill))
-                .style(move |_| container::Style {
+            container(iced::widget::Space::new(4.0, Length::Fill)).style(move |_| {
+                container::Style {
                     background: Some(iced::Background::Color(border_color)),
                     ..Default::default()
-                })
+                }
+            }),
         )
         .on_press(Message::SidebarResizeStart)
         .on_release(Message::SidebarResizeEnd)
         .interaction(mouse::Interaction::ResizingHorizontally);
 
         let feed_el: Element<Message> = if let Some(conn) = self.sidebar.active() {
-            conn.feed.view(|m| Message::Feed(m), palette, self.density)
+            conn.feed.view(Message::Feed, palette, self.density)
         } else {
             iced::widget::Space::new(Length::Fill, Length::Fill).into()
         };
 
         let selected_entry = self.sidebar.active().and_then(|c| {
-            c.feed.selected.and_then(|id| c.feed.entries.iter().find(|e| e.id == id))
+            c.feed
+                .selected
+                .and_then(|id| c.feed.entries.iter().find(|e| e.id == id))
         });
 
-        let inspector_el = self.inspector.view(
-            selected_entry,
-            |m| Message::Inspector(m),
-            palette,
-            fs,
-        );
+        let inspector_el = self
+            .inspector
+            .view(selected_entry, Message::Inspector, palette, fs);
 
         let main_pane = column![
-            container(feed_el)
-                .width(Length::Fill)
-                .height(Length::Fill),
-            container(inspector_el)
-                .width(Length::Fill)
-                .height(340),
+            container(feed_el).width(Length::Fill).height(Length::Fill),
+            container(inspector_el).width(Length::Fill).height(340),
         ]
         .spacing(0)
         .width(Length::Fill)
         .height(Length::Fill);
 
-        let body_row = row![
-            sidebar_el,
-            resize_handle,
-            main_pane,
-        ]
-        .spacing(0)
-        .height(Length::Fill);
+        let body_row = row![sidebar_el, resize_handle, main_pane,]
+            .spacing(0)
+            .height(Length::Fill);
 
         let body: Element<Message> = if self.mcp_panel.open {
             iced::widget::stack![
                 body_row,
-                ui::mcp_panel::overlay_view(
-                    &self.mcp_panel,
-                    |m| Message::Mcp(m),
-                    &palette,
-                ),
+                ui::mcp_panel::overlay_view(&self.mcp_panel, Message::Mcp, &palette,),
             ]
             .into()
         } else {
             body_row.into()
         };
 
-        let base: Element<Message> = container(
-            column![top, body, status].spacing(0)
-        )
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .style(move |_| iced::widget::container::Style {
-            background: Some(iced::Background::Color(bg)),
-            border: iced::Border { color: border_color, width: 0.0, radius: 0.0.into() },
-            ..Default::default()
-        })
-        .into();
+        let base: Element<Message> = container(column![top, body, status].spacing(0))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(move |_| iced::widget::container::Style {
+                background: Some(iced::Background::Color(bg)),
+                border: iced::Border {
+                    color: border_color,
+                    width: 0.0,
+                    radius: 0.0.into(),
+                },
+                ..Default::default()
+            })
+            .into();
 
         if let Some(dialog_state) = &self.sidebar.dialog {
             let dialog_palette = self.theme.palette();
@@ -339,12 +356,16 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let data_subs: Vec<Subscription<Message>> = self.sidebar.connections
+        let data_subs: Vec<Subscription<Message>> = self
+            .sidebar
+            .connections
             .iter()
             .filter(|c| c.item.live)
             .map(|c| {
                 let id = c.item.id;
-                Subscription::run_with_id(id, iced::stream::channel(256, move |mut output| async move {
+                Subscription::run_with_id(
+                    id,
+                    iced::stream::channel(256, move |mut output| async move {
                         use iced::futures::SinkExt;
                         let (tx, mut rx) = tokio::sync::mpsc::channel(256);
                         Box::new(MockSource).start(tx);
@@ -352,34 +373,32 @@ impl App {
                             let first = rx.recv().await;
                             let Some(first) = first else { break };
                             let mut batch = vec![first];
-                            let deadline = tokio::time::Instant::now()
-                                + std::time::Duration::from_millis(300);
-                            loop {
-                                match tokio::time::timeout_at(deadline, rx.recv()).await {
-                                    Ok(Some(e)) => {
-                                        batch.push(e);
-                                        if batch.len() >= 8 { break; }
-                                    }
-                                    _ => break,
+                            let deadline =
+                                tokio::time::Instant::now() + std::time::Duration::from_millis(300);
+                            while let Ok(Some(e)) =
+                                tokio::time::timeout_at(deadline, rx.recv()).await
+                            {
+                                batch.push(e);
+                                if batch.len() >= 8 {
+                                    break;
                                 }
                             }
                             let _ = output.send(Message::QueriesReceived(id, batch)).await;
                         }
-                    }))
+                    }),
+                )
             })
             .collect();
 
         if self.sidebar_dragging {
-            let drag_sub = iced::event::listen_with(|event, _status, _window| {
-                match event {
-                    iced::Event::Mouse(mouse::Event::CursorMoved { position }) => {
-                        Some(Message::SidebarResizeMove(position.x))
-                    }
-                    iced::Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
-                        Some(Message::SidebarResizeEnd)
-                    }
-                    _ => None,
+            let drag_sub = iced::event::listen_with(|event, _status, _window| match event {
+                iced::Event::Mouse(mouse::Event::CursorMoved { position }) => {
+                    Some(Message::SidebarResizeMove(position.x))
                 }
+                iced::Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                    Some(Message::SidebarResizeEnd)
+                }
+                _ => None,
             });
             let mut all = data_subs;
             all.push(drag_sub);

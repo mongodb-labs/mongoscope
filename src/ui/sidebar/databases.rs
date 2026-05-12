@@ -1,6 +1,9 @@
-use iced::{widget::{button, column, row, text}, Border, Element, Length, Padding};
 use crate::theme::Palette;
 use crate::ui::sidebar::collections::CollectionItem;
+use iced::{
+    widget::{button, column, row, text},
+    Border, Element, Length, Padding,
+};
 
 #[derive(Debug, Clone)]
 pub struct DatabaseItem {
@@ -16,15 +19,11 @@ pub enum DatabasesMsg {
     ToggleCollection(String, String),
 }
 
-pub fn apply_toggle_db(databases: &mut Vec<DatabaseItem>, name: &str) {
+pub fn apply_toggle_db(databases: &mut [DatabaseItem], name: &str) {
     for db in databases.iter_mut() {
         if db.name == name {
             db.active = !db.active;
-            if db.active {
-                db.expanded = true;
-            } else {
-                db.expanded = false;
-            }
+            db.expanded = db.active;
             for c in &mut db.collections {
                 c.active = false;
             }
@@ -37,7 +36,7 @@ pub fn apply_toggle_db(databases: &mut Vec<DatabaseItem>, name: &str) {
     }
 }
 
-pub fn apply_toggle_collection(databases: &mut Vec<DatabaseItem>, db_name: &str, coll_name: &str) {
+pub fn apply_toggle_collection(databases: &mut [DatabaseItem], db_name: &str, coll_name: &str) {
     for db in databases.iter_mut() {
         if db.name == db_name {
             db.active = true;
@@ -93,7 +92,12 @@ pub fn databases_panel<Msg: Clone + 'static>(
                 .spacing(4)
                 .align_y(iced::Alignment::Center),
             )
-            .padding(Padding { top: 5.0, bottom: 5.0, left: 8.0, right: 8.0 })
+            .padding(Padding {
+                top: 5.0,
+                bottom: 5.0,
+                left: 8.0,
+                right: 8.0,
+            })
             .width(Length::Fill)
             .on_press(on_msg(DatabasesMsg::ToggleDb(db_name_click)))
             .style(move |_, status| button::Style {
@@ -128,10 +132,7 @@ pub fn databases_panel<Msg: Clone + 'static>(
                                     .size(11)
                                     .color(fg)
                                     .font(iced::Font::MONOSPACE),
-                                text(sub)
-                                    .size(9)
-                                    .color(fg_dim2)
-                                    .font(iced::Font::MONOSPACE),
+                                text(sub).size(9).color(fg_dim2).font(iced::Font::MONOSPACE),
                             ]
                             .spacing(1)
                             .width(Length::Fill),
@@ -139,7 +140,12 @@ pub fn databases_panel<Msg: Clone + 'static>(
                         .spacing(5)
                         .align_y(iced::Alignment::Center),
                     )
-                    .padding(Padding { top: 5.0, bottom: 5.0, left: 20.0, right: 8.0 })
+                    .padding(Padding {
+                        top: 5.0,
+                        bottom: 5.0,
+                        left: 20.0,
+                        right: 8.0,
+                    })
                     .width(Length::Fill)
                     .on_press(on_msg(DatabasesMsg::ToggleCollection(
                         db_for_coll,
@@ -165,7 +171,12 @@ pub fn databases_panel<Msg: Clone + 'static>(
 
     column(rows)
         .spacing(1)
-        .padding(Padding { top: 4.0, bottom: 4.0, left: 0.0, right: 0.0 })
+        .padding(Padding {
+            top: 4.0,
+            bottom: 4.0,
+            left: 0.0,
+            right: 0.0,
+        })
         .into()
 }
 
@@ -191,7 +202,10 @@ mod tests {
 
     #[test]
     fn toggle_db_activates_and_expands() {
-        let mut dbs = vec![make_db("shop", false, &["orders"]), make_db("auth", false, &["tokens"])];
+        let mut dbs = vec![
+            make_db("shop", false, &["orders"]),
+            make_db("auth", false, &["tokens"]),
+        ];
         apply_toggle_db(&mut dbs, "shop");
         assert!(dbs[0].active);
         assert!(dbs[0].expanded);

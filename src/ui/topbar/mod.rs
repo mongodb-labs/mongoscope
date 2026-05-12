@@ -10,9 +10,12 @@ pub use logo::logo;
 pub use mcp_button::mcp_button;
 pub use menu_bar::{menu_bar, MenuMsg};
 
-use iced::{widget::{container, row}, Border, Element, Length, Padding};
 use crate::theme::Palette;
 use crate::ui::mcp_panel::McpServerState;
+use iced::{
+    widget::{container, row},
+    Border, Element, Length, Padding,
+};
 
 pub fn topbar<Msg: Clone + 'static>(
     conn: &ConnInfo,
@@ -44,7 +47,12 @@ pub fn topbar<Msg: Clone + 'static>(
     )
     .width(Length::Fill)
     .height(36)
-    .padding(Padding { top: 0.0, bottom: 0.0, left: 0.0, right: 8.0 })
+    .padding(Padding {
+        top: 0.0,
+        bottom: 0.0,
+        left: 0.0,
+        right: 8.0,
+    })
     .style(move |_| container::Style {
         background: Some(iced::Background::Color(bg)),
         border: Border {

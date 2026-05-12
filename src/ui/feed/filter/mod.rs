@@ -6,14 +6,19 @@ pub use kind_chips::{kind_chips, KindFilter};
 pub use parser::FilterExpr;
 pub use search_input::search_input;
 
-use iced::{widget::{button, container, row, text}, Border, Element, Length, Padding};
 use crate::theme::Palette;
+use iced::{
+    widget::{button, container, row, text},
+    Border, Element, Length, Padding,
+};
 
 #[derive(Debug, Clone)]
 pub enum FilterMsg {
     TextChanged(String),
     TextSubmit,
     KindSelected(KindFilter),
+    // TODO: remove when real backend is wired up — currently all mock data
+    #[allow(dead_code)]
     ClearFilter,
 }
 
@@ -56,7 +61,8 @@ impl FilterState {
     /// preserving all other tokens. Passing `None` removes the token.
     pub fn set_scope(&mut self, db: Option<String>, coll: Option<String>) {
         // Strip existing db: and coll: tokens
-        let rest: String = self.text
+        let rest: String = self
+            .text
             .split_whitespace()
             .filter(|t| !t.starts_with("db:") && !t.starts_with("coll:"))
             .collect::<Vec<_>>()
@@ -77,6 +83,7 @@ impl FilterState {
         self.expr = FilterExpr::parse(&self.text);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn view<'a, Msg: Clone + 'static>(
         &'a self,
         on_msg: impl Fn(FilterMsg) -> Msg + 'static + Copy,
@@ -95,16 +102,28 @@ impl FilterState {
         let warn = palette.warn;
 
         let count_str = format!("{}/{}", visible_count, total_count);
-        let count_color = if visible_count < total_count { accent } else { fg_dim2 };
+        let count_color = if visible_count < total_count {
+            accent
+        } else {
+            fg_dim2
+        };
 
         // Pause button: ‖ when capturing, ▶ when paused
         let pause_label = if paused { "▶" } else { "||" };
         let pause_color = if paused { warn } else { fg_dim };
 
         let pause_btn = button(
-            text(pause_label).size(11).color(pause_color).font(iced::Font::MONOSPACE)
+            text(pause_label)
+                .size(11)
+                .color(pause_color)
+                .font(iced::Font::MONOSPACE),
         )
-        .padding(Padding { top: 3.0, bottom: 3.0, left: 6.0, right: 6.0 })
+        .padding(Padding {
+            top: 3.0,
+            bottom: 3.0,
+            left: 6.0,
+            right: 6.0,
+        })
         .on_press(on_pause)
         .style(move |_, _| button::Style {
             background: None,
@@ -113,9 +132,17 @@ impl FilterState {
         });
 
         let clear_btn = button(
-            text("✕").size(11).color(fg_dim2).font(iced::Font::MONOSPACE)
+            text("✕")
+                .size(11)
+                .color(fg_dim2)
+                .font(iced::Font::MONOSPACE),
         )
-        .padding(Padding { top: 3.0, bottom: 3.0, left: 6.0, right: 6.0 })
+        .padding(Padding {
+            top: 3.0,
+            bottom: 3.0,
+            left: 6.0,
+            right: 6.0,
+        })
         .on_press(on_clear)
         .style(move |_, _| button::Style {
             background: None,
@@ -132,20 +159,36 @@ impl FilterState {
                     on_msg(FilterMsg::TextSubmit),
                     &palette,
                 ),
-                kind_chips(self.kind, move |k| on_msg(FilterMsg::KindSelected(k)), &palette),
+                kind_chips(
+                    self.kind,
+                    move |k| on_msg(FilterMsg::KindSelected(k)),
+                    &palette
+                ),
                 iced::widget::Space::new(Length::Fill, 0),
-                text(count_str).size(11).color(count_color).font(iced::Font::MONOSPACE),
+                text(count_str)
+                    .size(11)
+                    .color(count_color)
+                    .font(iced::Font::MONOSPACE),
                 pause_btn,
                 clear_btn,
             ]
             .spacing(8)
             .align_y(iced::Alignment::Center)
-            .padding(Padding { top: 6.0, bottom: 6.0, left: 10.0, right: 6.0 })
+            .padding(Padding {
+                top: 6.0,
+                bottom: 6.0,
+                left: 10.0,
+                right: 6.0,
+            }),
         )
         .width(Length::Fill)
         .style(move |_| container::Style {
             background: Some(iced::Background::Color(bg1)),
-            border: Border { color: border_color, width: 1.0, radius: 0.0.into() },
+            border: Border {
+                color: border_color,
+                width: 1.0,
+                radius: 0.0.into(),
+            },
             ..Default::default()
         })
         .into()

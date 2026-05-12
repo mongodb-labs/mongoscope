@@ -1,6 +1,11 @@
-use iced::{widget::{column, container, row, text}, Border, Color, Element, Length, Padding};
-use crate::theme::Palette;
+// TODO: remove when real backend is wired up — currently all mock data
+#![allow(dead_code)]
 use super::ghost_btn::{ghost_button, GhostVariant};
+use crate::theme::Palette;
+use iced::{
+    widget::{column, container, row, text},
+    Border, Color, Element, Length, Padding,
+};
 
 pub fn warn_banner<Msg: Clone + 'static>(
     title: &str,
@@ -10,8 +15,18 @@ pub fn warn_banner<Msg: Clone + 'static>(
     palette: &Palette,
     fs: f32,
 ) -> Element<'static, Msg> {
-    let bg = Color { r: palette.warn.r, g: palette.warn.g, b: palette.warn.b, a: 0.14 };
-    let border_c = Color { r: palette.warn.r, g: palette.warn.g, b: palette.warn.b, a: 0.30 };
+    let bg = Color {
+        r: palette.warn.r,
+        g: palette.warn.g,
+        b: palette.warn.b,
+        a: 0.14,
+    };
+    let border_c = Color {
+        r: palette.warn.r,
+        g: palette.warn.g,
+        b: palette.warn.b,
+        a: 0.30,
+    };
 
     let body = row![
         text("◆").size(13).color(palette.warn),
@@ -28,10 +43,19 @@ pub fn warn_banner<Msg: Clone + 'static>(
 
     container(body)
         .width(Length::Fill)
-        .padding(Padding { top: 10.0, bottom: 10.0, left: 12.0, right: 12.0 })
+        .padding(Padding {
+            top: 10.0,
+            bottom: 10.0,
+            left: 12.0,
+            right: 12.0,
+        })
         .style(move |_| container::Style {
             background: Some(iced::Background::Color(bg)),
-            border: Border { color: border_c, width: 1.0, radius: 6.0.into() },
+            border: Border {
+                color: border_c,
+                width: 1.0,
+                radius: 6.0.into(),
+            },
             ..Default::default()
         })
         .into()

@@ -21,6 +21,17 @@ _(none yet)_
 - `tokio` runtime via iced's built-in integration
 - Mock data source at 2–3 entries/sec (`src/data/mock/`)
 
+## Before marking work done
+
+Always run these in order and confirm all pass:
+
+```
+cargo fmt
+cargo build
+cargo test
+cargo clippy
+```
+
 ## Key patterns
 
 - `Palette: Copy` — always pass by value, extract `Color` fields before `'static` closures

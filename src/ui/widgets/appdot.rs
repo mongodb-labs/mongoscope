@@ -8,7 +8,10 @@ pub fn appdot<Msg: 'static>(color: [u8; 3]) -> Element<'static, Msg> {
         .height(8)
         .style(move |_theme| container::Style {
             background: Some(iced::Background::Color(c)),
-            border: Border { radius: 2.0.into(), ..Default::default() },
+            border: Border {
+                radius: 2.0.into(),
+                ..Default::default()
+            },
             ..Default::default()
         })
         .into()

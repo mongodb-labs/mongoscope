@@ -1,8 +1,11 @@
-use iced::{
-    widget::canvas::{self, Canvas, Frame, Geometry, Path},
-    Color, Element, Length, Rectangle, Size,
+use crate::{
+    theme::Palette,
+    ui::feed::buckets::{BucketData, BUCKET_COUNT},
 };
-use crate::{theme::Palette, ui::feed::buckets::{BucketData, BUCKET_COUNT}};
+use iced::{
+    widget::canvas::{self, Canvas, Frame, Geometry},
+    Element, Length, Rectangle, Size,
+};
 
 pub struct DensityLane<'a> {
     buckets: &'a [BucketData; BUCKET_COUNT],
@@ -12,7 +15,11 @@ pub struct DensityLane<'a> {
 
 impl<'a> DensityLane<'a> {
     pub fn new(buckets: &'a [BucketData; BUCKET_COUNT], max_total: u32, palette: Palette) -> Self {
-        Self { buckets, max_total, palette }
+        Self {
+            buckets,
+            max_total,
+            palette,
+        }
     }
 }
 
@@ -30,11 +37,7 @@ impl<Msg> canvas::Program<Msg> for DensityLane<'_> {
         let mut frame = Frame::new(renderer, bounds.size());
 
         // Background
-        frame.fill_rectangle(
-            iced::Point::ORIGIN,
-            bounds.size(),
-            self.palette.bg2,
-        );
+        frame.fill_rectangle(iced::Point::ORIGIN, bounds.size(), self.palette.bg2);
 
         let w = bounds.width;
         let h = bounds.height;
@@ -48,8 +51,16 @@ impl<Msg> canvas::Program<Msg> for DensityLane<'_> {
             let x = i as f32 * bar_w;
 
             // Stack slow / warn / ok bottom-to-top
-            let slow_h = if b.slow > 0 { (b.slow as f32 / max) * h } else { 0.0 };
-            let warn_h = if b.warn > 0 { (b.warn as f32 / max) * h } else { 0.0 };
+            let slow_h = if b.slow > 0 {
+                (b.slow as f32 / max) * h
+            } else {
+                0.0
+            };
+            let warn_h = if b.warn > 0 {
+                (b.warn as f32 / max) * h
+            } else {
+                0.0
+            };
             let ok_h = full_h - slow_h - warn_h;
 
             let mut y = h - full_h;

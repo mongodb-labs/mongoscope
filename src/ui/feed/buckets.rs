@@ -34,17 +34,28 @@ impl Buckets {
         }
         let ms = entry.latency_ms.into_inner();
         let b = &mut self.data[bucket_idx];
-        if ms >= 1000 { b.slow += 1; }
-        else if ms >= 100 { b.warn += 1; }
-        else { b.ok += 1; }
+        if ms >= 1000 {
+            b.slow += 1;
+        } else if ms >= 100 {
+            b.warn += 1;
+        } else {
+            b.ok += 1;
+        }
     }
 
+    // TODO: remove when real backend is wired up — currently all mock data
+    #[allow(dead_code)]
     pub fn ordered(&self) -> impl Iterator<Item = &BucketData> {
         let start = (self.head + 1) % BUCKET_COUNT;
         (0..BUCKET_COUNT).map(move |i| &self.data[(start + i) % BUCKET_COUNT])
     }
 
     pub fn max_total(&self) -> u32 {
-        self.data.iter().map(|b| b.ok + b.warn + b.slow).max().unwrap_or(1).max(1)
+        self.data
+            .iter()
+            .map(|b| b.ok + b.warn + b.slow)
+            .max()
+            .unwrap_or(1)
+            .max(1)
     }
 }

@@ -1,15 +1,11 @@
 mod templates;
 pub use templates::all_templates;
 
-use std::time::Duration;
 use rand::{rngs::SmallRng, Rng, SeedableRng as _};
+use std::time::Duration;
 use tokio::sync::mpsc;
 
-use crate::data::{
-    model::QueryEntry,
-    source::DataSource,
-    types::*,
-};
+use crate::data::{model::QueryEntry, source::DataSource, types::*};
 use templates::{build_filter, build_pipeline};
 
 pub struct MockSource;

@@ -1,5 +1,7 @@
-use indexmap::IndexMap;
+// TODO: remove when real backend is wired up — currently all mock data
+#![allow(dead_code)]
 use super::types::*;
+use indexmap::IndexMap;
 
 pub type BsonDoc = IndexMap<String, BsonVal>;
 
@@ -51,7 +53,10 @@ impl Op {
     }
 
     pub fn is_read(&self) -> bool {
-        matches!(self, Op::Find | Op::FindOne | Op::Aggregate | Op::CountDocuments)
+        matches!(
+            self,
+            Op::Find | Op::FindOne | Op::Aggregate | Op::CountDocuments
+        )
     }
 
     pub fn is_write(&self) -> bool {
@@ -124,23 +129,78 @@ pub struct ClientApp {
 /// Static catalog used by sidebar and mock data.
 pub fn collections() -> Vec<Collection> {
     vec![
-        Collection { name: CollectionName::try_new("orders").unwrap(),    doc_count: 2_413_882,  size_human: "8.4 GB".into(),  index_count: 7 },
-        Collection { name: CollectionName::try_new("products").unwrap(),  doc_count: 184_302,    size_human: "412 MB".into(),  index_count: 5 },
-        Collection { name: CollectionName::try_new("users").unwrap(),     doc_count: 892_014,    size_human: "1.8 GB".into(),  index_count: 6 },
-        Collection { name: CollectionName::try_new("carts").unwrap(),     doc_count: 71_205,     size_human: "98 MB".into(),   index_count: 3 },
-        Collection { name: CollectionName::try_new("sessions").unwrap(),  doc_count: 12_044_119, size_human: "4.2 GB".into(),  index_count: 4 },
-        Collection { name: CollectionName::try_new("reviews").unwrap(),   doc_count: 3_201_885,  size_human: "2.1 GB".into(),  index_count: 5 },
-        Collection { name: CollectionName::try_new("inventory").unwrap(), doc_count: 48_112,     size_human: "64 MB".into(),   index_count: 4 },
-        Collection { name: CollectionName::try_new("events").unwrap(),    doc_count: 88_912_004, size_human: "41.2 GB".into(), index_count: 2 },
+        Collection {
+            name: CollectionName::try_new("orders").unwrap(),
+            doc_count: 2_413_882,
+            size_human: "8.4 GB".into(),
+            index_count: 7,
+        },
+        Collection {
+            name: CollectionName::try_new("products").unwrap(),
+            doc_count: 184_302,
+            size_human: "412 MB".into(),
+            index_count: 5,
+        },
+        Collection {
+            name: CollectionName::try_new("users").unwrap(),
+            doc_count: 892_014,
+            size_human: "1.8 GB".into(),
+            index_count: 6,
+        },
+        Collection {
+            name: CollectionName::try_new("carts").unwrap(),
+            doc_count: 71_205,
+            size_human: "98 MB".into(),
+            index_count: 3,
+        },
+        Collection {
+            name: CollectionName::try_new("sessions").unwrap(),
+            doc_count: 12_044_119,
+            size_human: "4.2 GB".into(),
+            index_count: 4,
+        },
+        Collection {
+            name: CollectionName::try_new("reviews").unwrap(),
+            doc_count: 3_201_885,
+            size_human: "2.1 GB".into(),
+            index_count: 5,
+        },
+        Collection {
+            name: CollectionName::try_new("inventory").unwrap(),
+            doc_count: 48_112,
+            size_human: "64 MB".into(),
+            index_count: 4,
+        },
+        Collection {
+            name: CollectionName::try_new("events").unwrap(),
+            doc_count: 88_912_004,
+            size_human: "41.2 GB".into(),
+            index_count: 2,
+        },
     ]
 }
 
 pub fn client_apps() -> Vec<ClientApp> {
     vec![
-        ClientApp { name: AppName::try_new("checkout-svc").unwrap(),      color: [96,  165, 250] },
-        ClientApp { name: AppName::try_new("catalog-api").unwrap(),       color: [167, 139, 250] },
-        ClientApp { name: AppName::try_new("analytics-worker").unwrap(),  color: [244, 114, 182] },
-        ClientApp { name: AppName::try_new("admin-portal").unwrap(),      color: [251, 191,  36] },
-        ClientApp { name: AppName::try_new("mobile-bff").unwrap(),        color: [52,  211, 153] },
+        ClientApp {
+            name: AppName::try_new("checkout-svc").unwrap(),
+            color: [96, 165, 250],
+        },
+        ClientApp {
+            name: AppName::try_new("catalog-api").unwrap(),
+            color: [167, 139, 250],
+        },
+        ClientApp {
+            name: AppName::try_new("analytics-worker").unwrap(),
+            color: [244, 114, 182],
+        },
+        ClientApp {
+            name: AppName::try_new("admin-portal").unwrap(),
+            color: [251, 191, 36],
+        },
+        ClientApp {
+            name: AppName::try_new("mobile-bff").unwrap(),
+            color: [52, 211, 153],
+        },
     ]
 }
