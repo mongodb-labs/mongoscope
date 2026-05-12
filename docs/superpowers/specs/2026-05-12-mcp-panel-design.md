@@ -3,6 +3,12 @@
 **Date:** 2026-05-12  
 **Status:** Approved
 
+## Design reference
+
+`~/temp/mongoscope/mcp-panel.html` — interactive mockup showing all three server states (Stopped / Starting / Running), backdrop, close button, copy button, and state-tab switcher.
+
+---
+
 ## Summary
 
 Add an MCP (Model Context Protocol) button to the topbar that opens a right-side overlay drawer. The drawer lets users start/stop a mock MCP server and shows the tools available plus the `mcp.json` config snippet needed to connect an AI agent.
