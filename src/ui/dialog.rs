@@ -46,11 +46,7 @@ fn help_card<'a, Msg: 'a>(
     let fg_dim = palette.fg_dim;
     let ok = palette.ok;
 
-    let mut col = column![text(title)
-        .size(11)
-        .color(fg)
-        .font(iced::Font::MONOSPACE)]
-    .spacing(4);
+    let mut col = column![text(title).size(11).color(fg).font(iced::Font::MONOSPACE)].spacing(4);
 
     if let Some(b) = body {
         col = col.push(text(b).size(10).color(fg_dim).font(iced::Font::MONOSPACE));
