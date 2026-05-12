@@ -40,6 +40,9 @@ impl SidebarState {
                 id: 0,
                 label: "localhost".into(),
                 topology: "direct".into(),
+                uri: "mongodb://localhost:27017".into(),
+                proxy_port: 0,
+                color: connections::ConnectionColor::None,
                 active: true,
                 live: true,
             }],
@@ -145,6 +148,7 @@ impl SidebarState {
                     }
                 }
                 ConnectionsMsg::Add => {}
+                _ => {}
             },
             SidebarMsg::Databases(m) => match m {
                 DatabasesMsg::ToggleDb(name) => apply_toggle_db(&mut self.databases, &name),
@@ -214,6 +218,7 @@ impl SidebarState {
             section_header("CONNECTIONS".into(), None),
             connections_panel(
                 &self.connections,
+                false,
                 move |m| on_msg(SidebarMsg::Connections(m)),
                 palette,
             ),
