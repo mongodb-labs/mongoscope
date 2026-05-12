@@ -1,5 +1,5 @@
 use iced::{
-    widget::{column, container, pick_list, row, text, text_input},
+    widget::{button, column, container, pick_list, row, text, text_input},
     Alignment, Border, Color, Element, Length, Padding,
 };
 use crate::theme::Palette;
@@ -282,6 +282,139 @@ pub fn step1_view<Msg: Clone + 'static>(
     ];
 
     body.into()
+}
+
+pub fn step2_view<Msg: Clone + 'static>(
+    state: &ConnectionDialogState,
+    on_msg: impl Fn(ConnectionsMsg) -> Msg + 'static + Copy,
+    palette: &Palette,
+) -> Element<'static, Msg> {
+    let bg1       = palette.bg1;
+    let bg2       = palette.bg2;
+    let fg        = palette.fg;
+    let fg_dim    = palette.fg_dim;
+    let fg_dim2   = palette.fg_dim2;
+    let border    = palette.border;
+    let border2   = palette.border2;
+    let ok        = palette.ok;
+    let ok_dim    = Color { a: 0.15, ..ok };
+    let ok_border = Color { a: 0.4,  ..ok };
+
+    let target_host = state.uri
+        .trim_start_matches("mongodb://")
+        .trim_start_matches("mongodb+srv://")
+        .split('/')
+        .next()
+        .unwrap_or(&state.uri)
+        .to_owned();
+
+    let proxy_port = state.proxy_port;
+    let proxy_uri  = format!("mongodb://localhost:{}/?directConnection=true", proxy_port);
+
+    // ── Success banner ────────────────────────────────────────────────────────
+    let banner = container(
+        row![
+            text("✓").size(14).color(ok).font(iced::Font::MONOSPACE),
+            column![
+                text(format!("Connected to {}", target_host))
+                    .size(11).color(ok).font(iced::Font::MONOSPACE),
+                text(format!("Mongoscope proxy is ready on port {}", proxy_port))
+                    .size(10).color(fg_dim).font(iced::Font::MONOSPACE),
+            ].spacing(2),
+        ]
+        .spacing(10)
+        .align_y(Alignment::Center)
+    )
+    .width(Length::Fill)
+    .padding(Padding { top: 10.0, bottom: 10.0, left: 14.0, right: 14.0 })
+    .style(move |_| container::Style {
+        background: Some(iced::Background::Color(ok_dim)),
+        border: Border { color: ok_border, width: 1.0, radius: 4.0.into() },
+        ..Default::default()
+    });
+
+    // ── Proxy URI row ─────────────────────────────────────────────────────────
+    let uri_display = container(
+        text(proxy_uri).size(11).color(ok).font(iced::Font::MONOSPACE)
+    )
+    .width(Length::Fill)
+    .padding(Padding::from([8, 12]))
+    .style(move |_| container::Style {
+        background: Some(iced::Background::Color(bg1)),
+        border: Border { color: border2, width: 1.0, radius: 4.0.into() },
+        ..Default::default()
+    });
+
+    let copy_btn = button(
+        text("Copy").size(11).color(fg_dim).font(iced::Font::MONOSPACE)
+    )
+    .padding(Padding::from([6, 12]))
+    .on_press(on_msg(ConnectionsMsg::DialogCopyUri))
+    .style(move |_, _| button::Style {
+        background: Some(iced::Background::Color(bg1)),
+        border: Border { color: border2, width: 1.0, radius: 4.0.into() },
+        text_color: fg_dim,
+        ..Default::default()
+    });
+
+    let proxy_row = row![uri_display, copy_btn]
+        .spacing(8)
+        .align_y(Alignment::Center);
+
+    let sub_label = text(
+        "Same credentials — swap the host:port and add directConnection=true."
+    )
+    .size(10).color(fg_dim2).font(iced::Font::MONOSPACE);
+
+    let proxy_section = column![
+        text("Point your app to this URI instead")
+            .size(11).color(fg_dim).font(iced::Font::MONOSPACE),
+        proxy_row,
+        sub_label,
+    ].spacing(6);
+
+    // ── Routing table ─────────────────────────────────────────────────────────
+    let routing_table = container(
+        column![
+            routing_row("Your app connects to",
+                        &format!("localhost:{}", proxy_port), fg_dim, fg, false),
+            routing_row("Mongoscope proxies to",
+                        &target_host, fg_dim, fg, false),
+            routing_row("Traffic inspection",
+                        "active", fg_dim, ok, true),
+        ]
+        .spacing(4)
+    )
+    .width(Length::Fill)
+    .padding(Padding::from([14, 16]))
+    .style(move |_| container::Style {
+        background: Some(iced::Background::Color(bg2)),
+        border: Border { color: border, width: 1.0, radius: 4.0.into() },
+        ..Default::default()
+    });
+
+    container(
+        column![banner, proxy_section, routing_table].spacing(18)
+    )
+    .width(Length::Fill)
+    .padding(Padding { top: 20.0, bottom: 20.0, left: 24.0, right: 24.0 })
+    .into()
+}
+
+fn routing_row<'a, Msg: 'static>(
+    label: &str,
+    value: &str,
+    label_color: Color,
+    value_color: Color,
+    _bold: bool,
+) -> Element<'static, Msg> {
+    row![
+        text(label.to_owned()).size(10).color(label_color).font(iced::Font::MONOSPACE)
+            .width(Length::Fill),
+        text(value.to_owned()).size(10).color(value_color).font(iced::Font::MONOSPACE),
+    ]
+    .align_y(Alignment::Center)
+    .into()
 }
 
 #[cfg(test)]
