@@ -71,6 +71,7 @@ fn plan_bar<Msg: 'static>(
     bar_color: Color,
     fg_dim: Color,
     fs: f32,
+    track_bg: Color,
 ) -> Element<'static, Msg> {
     let label = label.to_owned();
     let ms_label = if ms == 0 {
@@ -86,21 +87,34 @@ fn plan_bar<Msg: 'static>(
     };
     let rest_pct = (100u16.saturating_sub(fill_pct)).max(1);
 
-    let bar = row![
-        container(iced::widget::Space::new(Length::Fill, 4))
-            .width(Length::FillPortion(fill_pct))
-            .height(4)
-            .style(move |_| container::Style {
-                background: Some(iced::Background::Color(bar_color)),
-                border: Border {
-                    radius: 2.0.into(),
+    // 10px tall track with dark background; colored fill inside
+    let bar = container(
+        row![
+            container(iced::widget::Space::new(Length::Fill, 10))
+                .width(Length::FillPortion(fill_pct))
+                .height(10)
+                .style(move |_| container::Style {
+                    background: Some(iced::Background::Color(bar_color)),
+                    border: Border {
+                        radius: 2.0.into(),
+                        ..Default::default()
+                    },
                     ..Default::default()
-                },
-                ..Default::default()
-            }),
-        iced::widget::Space::new(Length::FillPortion(rest_pct), 4),
-    ]
-    .width(Length::Fill);
+                }),
+            iced::widget::Space::new(Length::FillPortion(rest_pct), 10),
+        ]
+        .width(Length::Fill),
+    )
+    .width(Length::Fill)
+    .height(10)
+    .style(move |_| container::Style {
+        background: Some(iced::Background::Color(track_bg)),
+        border: Border {
+            radius: 2.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
 
     column![
         row![
@@ -214,6 +228,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let fg_dim2 = palette.fg_dim2;
     let accent = palette.accent;
     let border = palette.border;
+    let bg = palette.bg;
     let border2 = Color {
         r: border.r,
         g: border.g,
@@ -288,7 +303,8 @@ pub fn explain_tab<Msg: Clone + 'static>(
                     before_max,
                     before_bar_color,
                     before_label_color,
-                    fs_small
+                    fs_small,
+                    bg
                 ),
                 plan_bar::<Msg>(
                     "FETCH",
@@ -296,7 +312,8 @@ pub fn explain_tab<Msg: Clone + 'static>(
                     before_max,
                     before_bar_color,
                     before_label_color,
-                    fs_small
+                    fs_small,
+                    bg
                 ),
                 plan_bar::<Msg>(
                     "SORT",
@@ -304,7 +321,8 @@ pub fn explain_tab<Msg: Clone + 'static>(
                     before_max,
                     before_bar_color,
                     before_label_color,
-                    fs_small
+                    fs_small,
+                    bg
                 ),
                 plan_bar::<Msg>(
                     "LIMIT",
@@ -312,7 +330,8 @@ pub fn explain_tab<Msg: Clone + 'static>(
                     before_max,
                     before_bar_color,
                     before_label_color,
-                    fs_small
+                    fs_small,
+                    bg
                 ),
             ]
             .spacing(4)
@@ -385,7 +404,8 @@ pub fn explain_tab<Msg: Clone + 'static>(
                     after_max,
                     after_bar_color,
                     fg_dim,
-                    fs_small
+                    fs_small,
+                    bg
                 ),
                 plan_bar::<Msg>(
                     "FETCH",
@@ -393,7 +413,8 @@ pub fn explain_tab<Msg: Clone + 'static>(
                     after_max,
                     after_bar_color,
                     fg_dim,
-                    fs_small
+                    fs_small,
+                    bg
                 ),
                 plan_bar::<Msg>(
                     "SORT",
@@ -401,7 +422,8 @@ pub fn explain_tab<Msg: Clone + 'static>(
                     after_max,
                     after_bar_color,
                     fg_dim,
-                    fs_small
+                    fs_small,
+                    bg
                 ),
                 plan_bar::<Msg>(
                     "LIMIT",
@@ -409,7 +431,8 @@ pub fn explain_tab<Msg: Clone + 'static>(
                     after_max,
                     after_bar_color,
                     fg_dim,
-                    fs_small
+                    fs_small,
+                    bg
                 ),
             ]
             .spacing(4)
