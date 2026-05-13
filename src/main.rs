@@ -18,7 +18,7 @@ use ui::{
         InspectorMsg, InspectorState,
     },
     mcp_panel::{McpMsg, McpPanelState, McpServerState},
-    sidebar::{connections::ConnectionsMsg, SidebarMsg, SidebarState},
+    sidebar::{connections::ConnectionsMsg, filters::FilterPanelMsg, SidebarMsg, SidebarState},
     statusbar::{statusbar, StatusInfo},
     topbar::{conn_bar::ConnInfo, topbar, MenuMsg},
 };
@@ -235,6 +235,18 @@ impl App {
                         conn.feed.filter.set_app(app);
                     }
                 }
+                if let SidebarMsg::Filters(FilterPanelMsg::Toggle(preset)) = &m {
+                    let preset = *preset;
+                    if let Some(conn) = self.sidebar.active_mut() {
+                        let current = conn.feed.filter.filter.preset;
+                        let next = if current == Some(preset) {
+                            None
+                        } else {
+                            Some(preset)
+                        };
+                        conn.feed.filter.set_preset(next);
+                    }
+                }
                 Task::none()
             }
             Message::ToggleTheme => {
@@ -380,9 +392,16 @@ impl App {
             &palette,
         );
 
-        let sidebar_el = self
+        let active_preset = self
             .sidebar
-            .view(Message::Sidebar, &palette, self.sidebar_width);
+            .active()
+            .and_then(|c| c.feed.filter.active_preset());
+        let sidebar_el = self.sidebar.view(
+            Message::Sidebar,
+            &palette,
+            self.sidebar_width,
+            active_preset,
+        );
 
         let resize_handle = mouse_area(
             container(iced::widget::Space::new(4.0, Length::Fill)).style(move |_| {

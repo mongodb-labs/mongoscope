@@ -1,4 +1,4 @@
-use crate::{theme::Palette, ui::feed::filter::parser::FilterExpr};
+use crate::{theme::Palette, ui::feed::filter::parser::Filter};
 use iced::{
     widget::{button, container, row, text, text_input},
     Border, Element, Length, Padding,
@@ -19,8 +19,8 @@ pub fn search_input<Msg: Clone + 'static>(
     let accent = palette.accent;
     let bg_sel = palette.bg_sel;
 
-    let chips = FilterExpr::chip_tokens(&value);
-    let remaining = FilterExpr::non_chip_text(&value);
+    let chips = Filter::chip_tokens(&value);
+    let remaining = Filter::non_chip_text(&value);
     let chips_prefix = chips.join(" ");
 
     let chip_els: Vec<Element<'static, Msg>> = chips
@@ -45,7 +45,7 @@ pub fn search_input<Msg: Clone + 'static>(
                 left: 6.0,
                 right: 6.0,
             })
-            .on_press(on_change(FilterExpr::remove_token(&value_clone, &tok)))
+            .on_press(on_change(Filter::remove_token(&value_clone, &tok)))
             .style(move |_, _| button::Style {
                 background: Some(iced::Background::Color(bg_sel)),
                 border: Border {

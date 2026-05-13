@@ -3,10 +3,10 @@ pub mod parser;
 pub mod search_input;
 
 pub use kind_chips::{kind_chips, KindFilter};
-pub use parser::FilterExpr;
+pub use parser::{Filter, Preset};
 pub use search_input::search_input;
 
-use crate::theme::Palette;
+use crate::{data::model::QueryEntry, theme::Palette};
 use iced::{
     widget::{button, container, row, text},
     Border, Element, Length, Padding,
@@ -17,92 +17,72 @@ pub enum FilterMsg {
     TextChanged(String),
     TextSubmit,
     KindSelected(KindFilter),
-    // TODO: remove when real backend is wired up — currently all mock data
     #[allow(dead_code)]
     ClearFilter,
 }
 
 pub struct FilterState {
-    pub text: String,
-    pub kind: KindFilter,
-    pub expr: FilterExpr,
+    pub input: String,
+    pub filter: Filter,
 }
 
 impl FilterState {
     pub fn new() -> Self {
         Self {
-            text: String::new(),
-            kind: KindFilter::All,
-            expr: FilterExpr::default(),
+            input: String::new(),
+            filter: Filter::default(),
         }
+    }
+
+    fn sync_input(&mut self) {
+        self.input = self.filter.to_string();
+    }
+
+    pub fn set_scope(&mut self, db: Option<String>, coll: Option<String>) {
+        self.filter.db = db;
+        self.filter.coll = coll;
+        self.sync_input();
+    }
+
+    pub fn set_app(&mut self, app: Option<String>) {
+        self.filter.app = app;
+        self.sync_input();
+    }
+
+    pub fn set_preset(&mut self, preset: Option<Preset>) {
+        self.filter.preset = preset;
+        self.sync_input();
+    }
+
+    pub fn active_preset(&self) -> Option<Preset> {
+        self.filter.preset
+    }
+
+    pub fn matches(&self, entry: &QueryEntry) -> bool {
+        self.filter.matches(entry)
     }
 
     pub fn update(&mut self, msg: FilterMsg) {
         match msg {
             FilterMsg::TextChanged(t) => {
-                self.expr = FilterExpr::parse(&t);
-                self.text = t;
+                let kind = self.filter.kind;
+                self.filter = Filter::parse(&t);
+                self.filter.kind = kind;
+                self.input = t;
             }
             FilterMsg::TextSubmit => {
-                self.expr = FilterExpr::parse(&self.text);
+                let kind = self.filter.kind;
+                self.filter = Filter::parse(&self.input);
+                self.filter.kind = kind;
             }
             FilterMsg::KindSelected(k) => {
-                self.kind = k;
+                self.filter.kind = k;
             }
             FilterMsg::ClearFilter => {
-                self.text.clear();
-                self.kind = KindFilter::All;
-                self.expr = FilterExpr::default();
+                self.input.clear();
+                self.filter = Filter::default();
             }
         }
-    }
-
-    /// Replace any existing `db:` and `coll:` tokens in `self.text` with the given values,
-    /// preserving all other tokens. Passing `None` removes the token.
-    pub fn set_scope(&mut self, db: Option<String>, coll: Option<String>) {
-        // Strip existing db: and coll: tokens
-        let rest: String = self
-            .text
-            .split_whitespace()
-            .filter(|t| !t.starts_with("db:") && !t.starts_with("coll:"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        let mut parts: Vec<String> = Vec::new();
-        if let Some(d) = db {
-            parts.push(format!("db:{}", d));
-        }
-        if let Some(c) = coll {
-            parts.push(format!("coll:{}", c));
-        }
-        if !rest.is_empty() {
-            parts.push(rest);
-        }
-
-        self.text = parts.join(" ");
-        self.expr = FilterExpr::parse(&self.text);
-    }
-
-    /// Replace any existing `app:` token in `self.text` with the given value,
-    /// preserving all other tokens. Passing `None` removes the token.
-    pub fn set_app(&mut self, app: Option<String>) {
-        let rest: String = self
-            .text
-            .split_whitespace()
-            .filter(|t| !t.starts_with("app:"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        let mut parts: Vec<String> = Vec::new();
-        if !rest.is_empty() {
-            parts.push(rest);
-        }
-        if let Some(a) = app {
-            parts.push(format!("app:{}", a));
-        }
-
-        self.text = parts.join(" ");
-        self.expr = FilterExpr::parse(&self.text);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -130,7 +110,6 @@ impl FilterState {
             fg_dim2
         };
 
-        // Autoscroll toggle: ‖ when scrolling live, ▶ when locked
         let pause_label = if scroll_locked { "▶" } else { "||" };
         let pause_color = if scroll_locked { warn } else { fg_dim };
 
@@ -175,14 +154,14 @@ impl FilterState {
         container(
             row![
                 search_input(
-                    self.text.clone(),
+                    self.input.clone(),
                     "filter: db:shop coll:orders app:api slow",
                     move |t| on_msg(FilterMsg::TextChanged(t)),
                     on_msg(FilterMsg::TextSubmit),
                     &palette,
                 ),
                 kind_chips(
-                    self.kind,
+                    self.filter.kind,
                     move |k| on_msg(FilterMsg::KindSelected(k)),
                     &palette
                 ),
@@ -222,70 +201,77 @@ mod tests {
     use super::*;
 
     #[test]
-    fn set_scope_injects_db_token() {
+    fn set_scope_updates_filter_and_input() {
         let mut fs = FilterState::new();
         fs.set_scope(Some("shop".into()), None);
-        assert_eq!(fs.text, "db:shop");
-        assert_eq!(fs.expr.db, Some("shop".into()));
-        assert_eq!(fs.expr.coll, None);
+        assert_eq!(fs.filter.db, Some("shop".into()));
+        assert_eq!(fs.input, "db:shop");
     }
 
     #[test]
-    fn set_scope_injects_db_and_coll() {
+    fn set_scope_db_and_coll() {
         let mut fs = FilterState::new();
         fs.set_scope(Some("shop".into()), Some("orders".into()));
-        assert_eq!(fs.text, "db:shop coll:orders");
+        assert_eq!(fs.input, "db:shop coll:orders");
     }
 
     #[test]
-    fn set_scope_replaces_existing_db_token() {
+    fn set_scope_replaces_existing() {
         let mut fs = FilterState::new();
-        fs.text = "db:old coll:x foo".into();
+        fs.set_scope(Some("old".into()), Some("x".into()));
         fs.set_scope(Some("shop".into()), Some("orders".into()));
-        assert_eq!(fs.text, "db:shop coll:orders foo");
+        assert_eq!(fs.input, "db:shop coll:orders");
     }
 
     #[test]
-    fn set_scope_none_removes_tokens() {
+    fn set_scope_none_clears_fields() {
         let mut fs = FilterState::new();
-        fs.text = "db:shop coll:orders foo".into();
+        fs.set_scope(Some("shop".into()), Some("orders".into()));
         fs.set_scope(None, None);
-        assert_eq!(fs.text, "foo");
+        assert_eq!(fs.filter.db, None);
+        assert_eq!(fs.filter.coll, None);
+        assert_eq!(fs.input, "");
     }
 
     #[test]
-    fn set_scope_db_only_removes_coll() {
-        let mut fs = FilterState::new();
-        fs.text = "db:shop coll:orders".into();
-        fs.set_scope(Some("shop".into()), None);
-        assert_eq!(fs.text, "db:shop");
-    }
-
-    #[test]
-    fn set_app_injects_app_token() {
+    fn set_app_updates_filter_and_input() {
         let mut fs = FilterState::new();
         fs.set_app(Some("myapi".into()));
-        assert_eq!(fs.text, "app:myapi");
-        assert_eq!(fs.expr.app, Some("myapi".into()));
+        assert_eq!(fs.filter.app, Some("myapi".into()));
+        assert_eq!(fs.input, "app:myapi");
     }
 
     #[test]
-    fn set_app_replaces_existing_app_token() {
+    fn set_preset_slow_queries() {
         let mut fs = FilterState::new();
-        fs.text = "db:shop app:old slow".into();
-        fs.expr = FilterExpr::parse(&fs.text);
-        fs.set_app(Some("newapi".into()));
-        assert_eq!(fs.text, "db:shop slow app:newapi");
-        assert_eq!(fs.expr.app, Some("newapi".into()));
+        fs.set_preset(Some(Preset::SlowQueries));
+        assert_eq!(fs.filter.preset, Some(Preset::SlowQueries));
+        assert_eq!(fs.input, "slow");
     }
 
     #[test]
-    fn set_app_none_removes_token() {
+    fn set_preset_collscan_only() {
         let mut fs = FilterState::new();
-        fs.text = "db:shop app:old slow".into();
-        fs.expr = FilterExpr::parse(&fs.text);
-        fs.set_app(None);
-        assert_eq!(fs.text, "db:shop slow");
-        assert_eq!(fs.expr.app, None);
+        fs.set_preset(Some(Preset::CollScanOnly));
+        assert_eq!(fs.filter.preset, Some(Preset::CollScanOnly));
+        assert_eq!(fs.input, "collscan");
+    }
+
+    #[test]
+    fn set_preset_none_clears() {
+        let mut fs = FilterState::new();
+        fs.set_preset(Some(Preset::SlowQueries));
+        fs.set_preset(None);
+        assert_eq!(fs.filter.preset, None);
+        assert_eq!(fs.input, "");
+    }
+
+    #[test]
+    fn text_changed_preserves_kind() {
+        let mut fs = FilterState::new();
+        fs.filter.kind = KindFilter::Find;
+        fs.update(FilterMsg::TextChanged("db:shop".into()));
+        assert_eq!(fs.filter.kind, KindFilter::Find);
+        assert_eq!(fs.filter.db, Some("shop".into()));
     }
 }
