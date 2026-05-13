@@ -72,7 +72,8 @@ impl FeedState {
             FeedMsg::Filter(m) => self.filter.update(m),
             FeedMsg::SelectEntry(id) => {
                 self.selected = Some(id);
-                self.scroll_locked = true;
+                // Do not resume auto-scroll when user selects an entry — preserve
+                // whatever scroll state they're in (paused or live).
             }
             FeedMsg::TogglePause => {
                 self.scroll_locked = !self.scroll_locked;
