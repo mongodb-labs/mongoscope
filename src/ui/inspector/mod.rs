@@ -9,7 +9,7 @@ use iced::{
 };
 use tabs::{
     explain_tab, overview_tab, request_tab, response_tab, rules_tab, schema_tab, timeline_tab,
-    ComposeMsg, ComposeState, Rule, RuleAction, RulesMsg,
+    ComposeMsg, ComposeState, ExplainMsg, ExplainState, Rule, RuleAction, RulesMsg,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,12 +56,15 @@ pub enum InspectorMsg {
     TabSelect(InspectorTab),
     Compose(ComposeMsg),
     Rules(RulesMsg),
+    Explain(ExplainMsg),
+    SuggestIndex,
 }
 
 pub struct InspectorState {
     pub tab: InspectorTab,
     pub compose: ComposeState,
     pub rules: Vec<Rule>,
+    pub explain: ExplainState,
 }
 
 impl InspectorState {
@@ -69,6 +72,7 @@ impl InspectorState {
         Self {
             tab: InspectorTab::Overview,
             compose: ComposeState::new(),
+            explain: ExplainState::default(),
             rules: vec![
                 Rule {
                     id: 0,
@@ -125,6 +129,16 @@ impl InspectorState {
                 });
             }
             InspectorMsg::Rules(_) => {}
+            InspectorMsg::SuggestIndex => {
+                self.tab = InspectorTab::Explain;
+                self.explain = ExplainState::default();
+            }
+            InspectorMsg::Explain(ExplainMsg::RunIndex) => {
+                self.explain.index_applied = true;
+            }
+            InspectorMsg::Explain(ExplainMsg::CopyIndex) => {
+                // No state change; clipboard write is handled in main.rs.
+            }
         }
     }
 
@@ -218,10 +232,18 @@ impl InspectorState {
             .align_y(iced::alignment::Vertical::Center)
             .into(),
             Some(e) => match self.tab {
-                InspectorTab::Overview => overview_tab(e, &palette, fs),
+                InspectorTab::Overview => {
+                    overview_tab(e, move || on_msg(InspectorMsg::SuggestIndex), &palette, fs)
+                }
                 InspectorTab::Request => request_tab(e, &palette, fs),
                 InspectorTab::Response => response_tab(e, &palette, fs),
-                InspectorTab::Explain => explain_tab(e, &palette, fs),
+                InspectorTab::Explain => explain_tab(
+                    e,
+                    &self.explain,
+                    move |m| on_msg(InspectorMsg::Explain(m)),
+                    &palette,
+                    fs,
+                ),
                 InspectorTab::Timeline => timeline_tab(e, &palette, fs),
                 InspectorTab::Compose => {
                     self.compose

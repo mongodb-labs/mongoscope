@@ -1,0 +1,159 @@
+<h2>Realistic before / after plan stages</h2>
+<p class="subtitle">Index on filter field only — SORT stays but shrinks because fewer docs flow through.</p>
+
+<style>
+  :root {
+    --ms-bg:#0B0D10; --ms-bg1:#131518; --ms-bg2:#1A1D21;
+    --ms-fg:#E9EBED; --ms-fg-dim:#878D92; --ms-fg-dim2:#5E6468;
+    --ms-border:#212428; --ms-border2:#2B2E32;
+    --ms-accent:#6DD17F; --ms-warn:#F7B83D; --ms-danger:#FA6863;
+    --ms-tok-fn:#3ACDD6; --ms-tok-str:#FF9D77; --ms-tok-num:#B6AAFF;
+  }
+  .ms-shell { background:var(--ms-bg); border:1px solid var(--ms-border); border-radius:6px; font-family:'JetBrains Mono','Fira Code','Menlo',monospace; font-size:11px; color:var(--ms-fg); overflow:hidden; max-width:560px; margin:16px auto 0; }
+  .ms-tabbar { background:var(--ms-bg1); border-bottom:1px solid var(--ms-border); display:flex; height:30px; align-items:stretch; }
+  .ms-tab { padding:0 14px; display:flex; align-items:center; color:var(--ms-fg-dim); font-size:11px; border-bottom:2px solid transparent; position:relative; top:1px; }
+  .ms-tab.active { color:var(--ms-fg); border-bottom-color:var(--ms-accent); }
+  .ms-body { padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .ms-exhd { display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--ms-border); font-size:11px; }
+  .ms-plan-bad { color:var(--ms-danger); }
+  .ms-vtab { padding:2px 8px; border:1px solid var(--ms-border); border-radius:5px; font-size:10px; color:var(--ms-fg-dim); }
+  .ms-vtab.on { color:var(--ms-fg); border-color:var(--ms-accent); }
+  .ms-flame { display:flex; flex-direction:column; gap:3px; }
+  .ms-flame-row { display:flex; gap:8px; align-items:center; }
+  .ms-flame-name { width:110px; color:var(--ms-fg-dim); font-size:11px; flex-shrink:0; }
+  .ms-flame-bar-wrap { flex:1; height:18px; background:var(--ms-bg2); border-radius:3px; overflow:hidden; }
+  .ms-flame-fill { height:100%; display:flex; align-items:center; padding-left:6px; font-size:10px; color:#0B0D10; border-radius:3px; }
+  .ms-flame-fill.bad { background:var(--ms-danger); }
+  .ms-flame-fill.warn { background:var(--ms-warn); }
+  .ms-mini-card { background:var(--ms-bg1); border:1px solid var(--ms-border); border-radius:6px; padding:10px 12px; }
+  .ms-mini-hd { font-size:9px; color:var(--ms-fg-dim2); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:8px; }
+
+  .ms-ba-split { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .ms-ba-col-hd { font-size:9px; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:4px; display:flex; align-items:center; gap:5px; }
+  .ms-ba-plan { background:var(--ms-bg2); border:1px solid var(--ms-border); border-radius:4px; padding:8px 10px; display:flex; flex-direction:column; gap:3px; }
+  .ms-ba-row { display:flex; align-items:center; gap:6px; }
+  .ms-ba-name { width:70px; color:var(--ms-fg-dim); font-size:10px; flex-shrink:0; }
+  .ms-ba-bar-wrap { flex:1; height:10px; background:var(--ms-bg); border-radius:2px; overflow:hidden; }
+  .ms-ba-bar { height:100%; border-radius:2px; }
+  .ms-ba-ms { color:var(--ms-fg-dim2); font-size:10px; width:36px; text-align:right; flex-shrink:0; }
+
+  .ms-est-badge { font-size:8px; background:rgba(247,184,61,0.15); color:var(--ms-warn); border:1px solid rgba(247,184,61,0.3); border-radius:3px; padding:1px 5px; letter-spacing:0.04em; text-transform:uppercase; }
+  .ms-est-note { font-size:9px; color:var(--ms-fg-dim2); margin-top:5px; font-style:italic; }
+
+  .ms-code-pill-wrap { background:var(--ms-bg2); border:1px solid var(--ms-border2); border-radius:5px; display:flex; align-items:stretch; overflow:hidden; }
+  .ms-code-pill-label { background:rgba(109,209,127,0.12); border-right:1px solid var(--ms-border2); padding:7px 10px; font-size:9px; color:var(--ms-accent); letter-spacing:0.05em; text-transform:uppercase; display:flex; align-items:center; white-space:nowrap; }
+  .ms-code-pill-code { flex:1; padding:7px 12px; font-size:11px; display:flex; align-items:center; }
+  .ms-code-pill-actions { display:flex; border-left:1px solid var(--ms-border2); }
+  .ms-code-pill-btn { padding:0 12px; background:none; border:none; border-left:1px solid var(--ms-border2); color:var(--ms-fg-dim); font-size:10px; cursor:pointer; font-family:inherit; display:flex; align-items:center; }
+  .ms-code-pill-btn.done { background:rgba(109,209,127,0.15); color:var(--ms-accent); border-color:rgba(109,209,127,0.3); }
+</style>
+
+<div class="mockup">
+  <div class="mockup-header">After ▶ Run — consistent stages, realistic plan</div>
+  <div class="mockup-body">
+    <div class="ms-shell">
+      <div class="ms-tabbar">
+        <div class="ms-tab">Overview</div>
+        <div class="ms-tab active">Explain</div>
+      </div>
+      <div class="ms-body">
+        <div class="ms-exhd">
+          <span>winning plan · <span class="ms-plan-bad">COLLSCAN</span></span>
+          <div style="display:flex;gap:4px;"><span class="ms-vtab on">Flame</span><span class="ms-vtab">Tree</span><span class="ms-vtab">Raw</span></div>
+        </div>
+        <div class="ms-flame">
+          <div class="ms-flame-row">
+            <span class="ms-flame-name">COLLSCAN</span>
+            <div class="ms-flame-bar-wrap"><div class="ms-flame-fill bad" style="width:92%;">227ms</div></div>
+          </div>
+          <div class="ms-flame-row">
+            <span class="ms-flame-name">SORT (in mem)</span>
+            <div class="ms-flame-bar-wrap"><div class="ms-flame-fill warn" style="width:6%;">16ms</div></div>
+          </div>
+          <div class="ms-flame-row">
+            <span class="ms-flame-name">LIMIT</span>
+            <div class="ms-flame-bar-wrap"><div class="ms-flame-fill" style="width:1%;background:var(--ms-fg-dim);">1ms</div></div>
+          </div>
+        </div>
+
+        <div class="ms-mini-card">
+          <div class="ms-mini-hd">suggested index — projected impact</div>
+          <div class="ms-ba-split">
+
+            <!-- BEFORE (dimmed) -->
+            <div>
+              <div class="ms-ba-col-hd" style="color:var(--ms-fg-dim2);">before</div>
+              <div class="ms-ba-plan" style="opacity:0.4;">
+                <div class="ms-ba-row">
+                  <span class="ms-ba-name">COLLSCAN</span>
+                  <div class="ms-ba-bar-wrap"><div class="ms-ba-bar" style="width:92%;background:var(--ms-danger);"></div></div>
+                  <span class="ms-ba-ms">227ms</span>
+                </div>
+                <div class="ms-ba-row">
+                  <span class="ms-ba-name">FETCH</span>
+                  <div class="ms-ba-bar-wrap"><div class="ms-ba-bar" style="width:0%;"></div></div>
+                  <span class="ms-ba-ms" style="color:var(--ms-fg-dim2);">—</span>
+                </div>
+                <div class="ms-ba-row">
+                  <span class="ms-ba-name">SORT</span>
+                  <div class="ms-ba-bar-wrap"><div class="ms-ba-bar" style="width:6%;background:var(--ms-warn);"></div></div>
+                  <span class="ms-ba-ms">16ms</span>
+                </div>
+                <div class="ms-ba-row">
+                  <span class="ms-ba-name">LIMIT</span>
+                  <div class="ms-ba-bar-wrap"><div class="ms-ba-bar" style="width:1%;background:var(--ms-fg-dim2);"></div></div>
+                  <span class="ms-ba-ms">1ms</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- AFTER (highlighted, same stages) -->
+            <div>
+              <div class="ms-ba-col-hd" style="color:var(--ms-accent);">
+                ✓ index applied &nbsp;<span class="ms-est-badge">est.</span>
+              </div>
+              <div class="ms-ba-plan" style="border-color:rgba(109,209,127,0.35);background:rgba(109,209,127,0.06);">
+                <div class="ms-ba-row">
+                  <span class="ms-ba-name">IXSCAN</span>
+                  <div class="ms-ba-bar-wrap"><div class="ms-ba-bar" style="width:14%;background:var(--ms-accent);"></div></div>
+                  <span class="ms-ba-ms">~1ms</span>
+                </div>
+                <div class="ms-ba-row">
+                  <span class="ms-ba-name">FETCH</span>
+                  <div class="ms-ba-bar-wrap"><div class="ms-ba-bar" style="width:28%;background:var(--ms-accent);"></div></div>
+                  <span class="ms-ba-ms">~2ms</span>
+                </div>
+                <div class="ms-ba-row">
+                  <span class="ms-ba-name">SORT</span>
+                  <div class="ms-ba-bar-wrap"><div class="ms-ba-bar" style="width:14%;background:var(--ms-accent);"></div></div>
+                  <span class="ms-ba-ms">~1ms</span>
+                </div>
+                <div class="ms-ba-row">
+                  <span class="ms-ba-name">LIMIT</span>
+                  <div class="ms-ba-bar-wrap"><div class="ms-ba-bar" style="width:7%;background:var(--ms-accent);"></div></div>
+                  <span class="ms-ba-ms">~0ms</span>
+                </div>
+              </div>
+              <div class="ms-est-note">actual speedup depends on data distribution</div>
+            </div>
+
+          </div>
+
+          <div class="ms-code-pill-wrap">
+            <div class="ms-code-pill-label">index</div>
+            <div class="ms-code-pill-code">
+              <span style="color:var(--ms-fg-dim);">db.orders.</span><span style="color:var(--ms-tok-fn);">createIndex</span><span style="color:var(--ms-fg);">(</span><span style="color:var(--ms-tok-str);">status</span><span style="color:var(--ms-fg);">:</span> <span style="color:var(--ms-tok-num);">1</span><span style="color:var(--ms-fg);">)</span>
+            </div>
+            <div class="ms-code-pill-actions">
+              <button class="ms-code-pill-btn">Copy</button>
+              <button class="ms-code-pill-btn done">✓ Created</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;text-align:center;">Before and after now share the same 4 stages. COLLSCAN → IXSCAN, SORT stays but shrinks dramatically. Does this look right?</p>
