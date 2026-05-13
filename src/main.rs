@@ -145,6 +145,11 @@ impl App {
                             height: 300.0,
                             drag_start: None,
                         };
+                        // Inspector opening shrinks the feed viewport, which fires a
+                        // spurious Scrolled(y≈0). Absorb it so scroll_locked is preserved.
+                        if let Some(conn) = self.sidebar.active_mut() {
+                            conn.feed.pending_layout_reflow += 1;
+                        }
                     }
                 }
                 Task::none()

@@ -36,8 +36,9 @@ pub struct FeedState {
     pub now_ms: u64,
     pub scroll_locked: bool,
     pub frozen_entries: Vec<QueryEntry>,
-    pub pending_scroll_to: u32, // scroll_to(y=0) tasks in flight
-    pub pending_scroll_by: u32, // scroll_by(dy) tasks in flight
+    pub pending_scroll_to: u32,      // scroll_to(y=0) tasks in flight
+    pub pending_scroll_by: u32,      // scroll_by(dy) tasks in flight
+    pub pending_layout_reflow: u32,  // absorbs spurious Scrolled events from layout changes
     pub scroll_y: f32,          // latest real scroll position
     pub prev_scroll_y: f32,     // scroll position before that (direction detection)
 }
@@ -54,6 +55,7 @@ impl FeedState {
             frozen_entries: Vec::new(),
             pending_scroll_to: 0,
             pending_scroll_by: 0,
+            pending_layout_reflow: 0,
             scroll_y: 0.0,
             prev_scroll_y: 0.0,
         }
@@ -72,8 +74,7 @@ impl FeedState {
             FeedMsg::Filter(m) => self.filter.update(m),
             FeedMsg::SelectEntry(id) => {
                 self.selected = Some(id);
-                // Do not resume auto-scroll when user selects an entry — preserve
-                // whatever scroll state they're in (paused or live).
+                self.scroll_locked = true;
             }
             FeedMsg::TogglePause => {
                 self.scroll_locked = !self.scroll_locked;
@@ -86,6 +87,14 @@ impl FeedState {
             }
             FeedMsg::Scrolled(vp) => {
                 let y = vp.absolute_offset().y;
+                // Layout reflow (e.g. inspector opens/closes) fires a spurious Scrolled.
+                // Absorb it without changing scroll state.
+                if self.pending_layout_reflow > 0 {
+                    self.pending_layout_reflow = self.pending_layout_reflow.saturating_sub(1);
+                    self.prev_scroll_y = self.scroll_y;
+                    self.scroll_y = y;
+                    return;
+                }
                 // Programmatic scroll_to(y=0) in flight: ignore the y≈0 event it produces,
                 // but only while autoscrolling. When scroll_locked=true the stale counter
                 // must not eat the user's manual scroll-to-top (which should unlock).
