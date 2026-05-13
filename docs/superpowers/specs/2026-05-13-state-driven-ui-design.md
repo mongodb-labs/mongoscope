@@ -97,9 +97,10 @@ Replace `text("shop.")` with `text(format!("{}.", entry.db))`.
 - Use `entry.db` for namespace display
 
 ### `compose.rs`
-- Add `cluster_label: &str` parameter
+- Add `cluster_label: &str` and `shell_version: &str` parameters
 - Replace `text("prod-cluster-0")` with `text(cluster_label)`
-- `"shell · mongosh 2.4.0"` stays as-is — this is a UI constant (shell version doesn't vary per query)
+- Replace `"shell · mongosh 2.4.0"` with `text(format!("shell · {}", shell_version))`
+- Add `shell_version: String` to `ConnectionItem` (mock value: `"mongosh 2.4.0"`)
 
 ### `timeline.rs` — DELETE
 Remove file. Remove from `mod.rs` imports, `InspectorTab` enum, `InspectorTab::all()`, and tab routing match.
@@ -122,7 +123,7 @@ The schema lookup and cluster label retrieval happen at the call site in `mod.rs
 |---|---|
 | `"OP_MSG"` in request/response headers | MongoDB wire protocol name — factually correct for all modern queries, not per-query data |
 | Button labels (`"copy"`, `"export"`, `"↻ Replay"`, etc.) | UI chrome |
-| `"shell · mongosh 2.4.0"` in compose footer | UI constant; shell version doesn't come from a query |
+| Button labels (`"↻ Replay"`, `"◇ Dry-run"`, etc.) | UI chrome, not data |
 | Efficiency threshold labels (`"optimal (1×)"`, etc.) | UI copy |
 | Phase colors in explain flame | Palette-derived, not data |
 
