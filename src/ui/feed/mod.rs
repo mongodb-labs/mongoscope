@@ -35,12 +35,11 @@ pub struct FeedState {
     pub buckets: Buckets,
     pub now_ms: u64,
     pub scroll_locked: bool,
-    pub frozen_entries: Vec<QueryEntry>,
-    pub pending_scroll_to: u32,      // scroll_to(y=0) tasks in flight
-    pub pending_scroll_by: u32,      // scroll_by(dy) tasks in flight
-    pub pending_layout_reflow: u32,  // absorbs spurious Scrolled events from layout changes
-    pub scroll_y: f32,          // latest real scroll position
-    pub prev_scroll_y: f32,     // scroll position before that (direction detection)
+    pub pending_scroll_to: u32,     // scroll_to(y=0) tasks in flight
+    pub pending_scroll_by: u32,     // scroll_by(dy) tasks in flight
+    pub pending_layout_reflow: u32, // absorbs spurious Scrolled events from layout changes
+    pub scroll_y: f32,              // latest real scroll position
+    pub prev_scroll_y: f32,         // scroll position before that (direction detection)
 }
 
 impl FeedState {
@@ -52,7 +51,6 @@ impl FeedState {
             buckets: Buckets::new(500),
             now_ms: 0,
             scroll_locked: false,
-            frozen_entries: Vec::new(),
             pending_scroll_to: 0,
             pending_scroll_by: 0,
             pending_layout_reflow: 0,
@@ -81,7 +79,6 @@ impl FeedState {
             }
             FeedMsg::ClearEntries => {
                 self.entries.clear();
-                self.frozen_entries.clear();
                 self.buckets = Buckets::new(500);
                 self.selected = None;
             }
