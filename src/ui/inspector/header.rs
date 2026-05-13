@@ -18,6 +18,7 @@ pub fn inspector_header<Msg: Clone + 'static>(
     let fg_dim = palette.fg_dim;
     let fg_dim2 = palette.fg_dim2;
 
+    let db = entry.db.as_str().to_string();
     let coll = entry.coll.as_str().to_string();
     let app = entry.app.as_str().to_string();
     let id = entry.id.into_inner();
@@ -54,7 +55,7 @@ pub fn inspector_header<Msg: Clone + 'static>(
         row![
             op_badge(&entry.op, palette),
             iced::widget::Space::new(6, 0),
-            text("shop.")
+            text(format!("{}.", db))
                 .size(fs)
                 .color(fg_dim)
                 .font(iced::Font::MONOSPACE),

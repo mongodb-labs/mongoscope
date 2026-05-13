@@ -3,6 +3,19 @@
 use super::types::*;
 use indexmap::IndexMap;
 
+pub struct SchemaField {
+    pub name: &'static str,
+    pub type_str: &'static str,
+    pub samples: &'static [&'static str],
+    pub coverage_pct: u8,
+}
+
+pub struct CollectionSchema {
+    pub coll: CollectionName,
+    pub fields: Vec<SchemaField>,
+    pub sampled_docs: u32,
+}
+
 pub type BsonDoc = IndexMap<String, BsonVal>;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -110,6 +123,11 @@ pub struct QueryEntry {
     pub doc: Option<BsonDoc>,
     pub warn: Option<String>,
     pub slow: bool,
+    pub conn_id: ConnId,
+    pub lsid: Option<String>,
+    pub cluster_time: Option<String>,
+    pub response_docs: Vec<BsonDoc>,
+    pub rejected_plan_count: u8,
 }
 
 #[derive(Debug, Clone)]
@@ -201,6 +219,401 @@ pub fn client_apps() -> Vec<ClientApp> {
         ClientApp {
             name: AppName::try_new("mobile-bff").unwrap(),
             color: [52, 211, 153],
+        },
+    ]
+}
+
+pub fn mock_schemas() -> Vec<CollectionSchema> {
+    vec![
+        CollectionSchema {
+            coll: CollectionName::try_new("orders").unwrap(),
+            sampled_docs: 2_000,
+            fields: vec![
+                SchemaField {
+                    name: "_id",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &["ObjectId(…)"],
+                },
+                SchemaField {
+                    name: "userId",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &["ObjectId(…)"],
+                },
+                SchemaField {
+                    name: "total",
+                    type_str: "Decimal",
+                    coverage_pct: 100,
+                    samples: &["49.00", "312.40"],
+                },
+                SchemaField {
+                    name: "status",
+                    type_str: "enum",
+                    coverage_pct: 100,
+                    samples: &["paid", "pending", "shipped"],
+                },
+                SchemaField {
+                    name: "items",
+                    type_str: "Array<Doc>",
+                    coverage_pct: 100,
+                    samples: &["[{…}, {…}]"],
+                },
+                SchemaField {
+                    name: "items.sku",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "items.qty",
+                    type_str: "Int32",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "shipping",
+                    type_str: "Doc",
+                    coverage_pct: 96,
+                    samples: &["{ country, city, … }"],
+                },
+                SchemaField {
+                    name: "shipping.country",
+                    type_str: "String",
+                    coverage_pct: 96,
+                    samples: &["US", "DE", "JP"],
+                },
+                SchemaField {
+                    name: "coupon",
+                    type_str: "String?",
+                    coverage_pct: 21,
+                    samples: &["SUMMER26"],
+                },
+                SchemaField {
+                    name: "notes",
+                    type_str: "String?",
+                    coverage_pct: 4,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "createdAt",
+                    type_str: "Date",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "updatedAt",
+                    type_str: "Date",
+                    coverage_pct: 99,
+                    samples: &[],
+                },
+            ],
+        },
+        CollectionSchema {
+            coll: CollectionName::try_new("products").unwrap(),
+            sampled_docs: 2_000,
+            fields: vec![
+                SchemaField {
+                    name: "_id",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "sku",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "name",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "price",
+                    type_str: "Decimal",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "category",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "tags",
+                    type_str: "Array<String>",
+                    coverage_pct: 94,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "inStock",
+                    type_str: "Bool",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "popularity",
+                    type_str: "Int32",
+                    coverage_pct: 88,
+                    samples: &[],
+                },
+            ],
+        },
+        CollectionSchema {
+            coll: CollectionName::try_new("users").unwrap(),
+            sampled_docs: 5_000,
+            fields: vec![
+                SchemaField {
+                    name: "_id",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &["ObjectId(…)"],
+                },
+                SchemaField {
+                    name: "email",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &["user@example.com"],
+                },
+                SchemaField {
+                    name: "name",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "passwordHash",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "role",
+                    type_str: "enum",
+                    coverage_pct: 100,
+                    samples: &["admin", "customer"],
+                },
+                SchemaField {
+                    name: "createdAt",
+                    type_str: "Date",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "lastLogin",
+                    type_str: "Date?",
+                    coverage_pct: 82,
+                    samples: &[],
+                },
+            ],
+        },
+        CollectionSchema {
+            coll: CollectionName::try_new("carts").unwrap(),
+            sampled_docs: 1_000,
+            fields: vec![
+                SchemaField {
+                    name: "_id",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "userId",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "items",
+                    type_str: "Array<Doc>",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "items.sku",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "items.qty",
+                    type_str: "Int32",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "updatedAt",
+                    type_str: "Date",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+            ],
+        },
+        CollectionSchema {
+            coll: CollectionName::try_new("sessions").unwrap(),
+            sampled_docs: 10_000,
+            fields: vec![
+                SchemaField {
+                    name: "_id",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &["UUID(…)"],
+                },
+                SchemaField {
+                    name: "userId",
+                    type_str: "ObjectId?",
+                    coverage_pct: 78,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "ip",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &["192.168.1.1"],
+                },
+                SchemaField {
+                    name: "ua",
+                    type_str: "String",
+                    coverage_pct: 99,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "expiresAt",
+                    type_str: "Date",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "createdAt",
+                    type_str: "Date",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+            ],
+        },
+        CollectionSchema {
+            coll: CollectionName::try_new("reviews").unwrap(),
+            sampled_docs: 3_000,
+            fields: vec![
+                SchemaField {
+                    name: "_id",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "productId",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "userId",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "rating",
+                    type_str: "Int32",
+                    coverage_pct: 100,
+                    samples: &["1", "3", "5"],
+                },
+                SchemaField {
+                    name: "body",
+                    type_str: "String?",
+                    coverage_pct: 71,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "createdAt",
+                    type_str: "Date",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+            ],
+        },
+        CollectionSchema {
+            coll: CollectionName::try_new("inventory").unwrap(),
+            sampled_docs: 1_000,
+            fields: vec![
+                SchemaField {
+                    name: "_id",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "sku",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "qty",
+                    type_str: "Int32",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "warehouse",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &["east-1", "west-2"],
+                },
+                SchemaField {
+                    name: "updatedAt",
+                    type_str: "Date",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+            ],
+        },
+        CollectionSchema {
+            coll: CollectionName::try_new("events").unwrap(),
+            sampled_docs: 10_000,
+            fields: vec![
+                SchemaField {
+                    name: "_id",
+                    type_str: "ObjectId",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "type",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &["click", "view", "purchase"],
+                },
+                SchemaField {
+                    name: "userId",
+                    type_str: "ObjectId?",
+                    coverage_pct: 65,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "sessionId",
+                    type_str: "String",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "ts",
+                    type_str: "Date",
+                    coverage_pct: 100,
+                    samples: &[],
+                },
+                SchemaField {
+                    name: "meta",
+                    type_str: "Doc?",
+                    coverage_pct: 42,
+                    samples: &[],
+                },
+            ],
         },
     ]
 }

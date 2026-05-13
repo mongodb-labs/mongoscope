@@ -43,7 +43,11 @@ impl ComposeState {
         on_msg: impl Fn(ComposeMsg) -> Msg + 'static + Copy,
         palette: Palette,
         fs: f32,
+        cluster_label: &str,
+        shell_version: &str,
     ) -> Element<'a, Msg> {
+        let cluster_label = cluster_label.to_owned();
+        let shell_version = shell_version.to_owned();
         let bg = palette.bg;
         let bg1 = palette.bg1;
         let _bg2 = palette.bg2;
@@ -94,7 +98,7 @@ impl ComposeState {
                         .size(fs_small)
                         .color(fg_dim)
                         .font(iced::Font::MONOSPACE),
-                    text("prod-cluster-0")
+                    text(cluster_label)
                         .size(fs_small)
                         .color(accent)
                         .font(iced::Font::MONOSPACE),
@@ -173,7 +177,7 @@ impl ComposeState {
         // ── compose footer
         let composefoot = container(
             row![
-                text("shell · mongosh 2.4.0")
+                text(format!("shell · {}", shell_version))
                     .size(10)
                     .color(fg_dim2)
                     .font(iced::Font::MONOSPACE),

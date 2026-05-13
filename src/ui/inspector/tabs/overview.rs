@@ -38,6 +38,7 @@ pub fn overview_tab<'a, Msg: Clone + 'static>(
     fs: f32,
 ) -> Element<'a, Msg> {
     let latency = entry.latency_ms.into_inner();
+    let db = entry.db.as_str().to_string();
     let coll = entry.coll.as_str().to_string();
     let lat_str = format_latency(latency);
     let fs_small = (fs - 1.0).max(9.0);
@@ -67,7 +68,7 @@ pub fn overview_tab<'a, Msg: Clone + 'static>(
             row![
                 op_badge(&entry.op, palette),
                 iced::widget::Space::new(8, 0),
-                text(format!("shop.{}", coll))
+                text(format!("{}.{}", db, coll))
                     .size(fs + 1.0)
                     .color(fg)
                     .font(iced::Font::MONOSPACE),
@@ -179,7 +180,7 @@ pub fn overview_tab<'a, Msg: Clone + 'static>(
     });
 
     // ── kv-grid stats
-    let namespace = format!("shop.{}", coll);
+    let namespace = format!("{}.{}", db, coll);
     let op_label = entry.op.label();
     let index_str = entry
         .index
@@ -202,7 +203,7 @@ pub fn overview_tab<'a, Msg: Clone + 'static>(
         }
         _ => "—".to_string(),
     };
-    let conn_id = format!("conn-{}", 1420 + (entry.id.into_inner() % 40));
+    let conn_id = format!("conn-{}", entry.conn_id.into_inner());
     let t_ms = entry.t_ms.into_inner();
     let started = format!("t+{}ms", t_ms);
 

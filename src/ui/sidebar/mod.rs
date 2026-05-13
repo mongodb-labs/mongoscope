@@ -158,6 +158,7 @@ impl SidebarState {
                             color: d.color,
                             active: true,
                             live: true,
+                            shell_version: "mongosh 2.4.0".into(),
                         };
                         for c in &mut self.connections {
                             c.item.active = false;
@@ -364,6 +365,7 @@ mod tests {
             color: ConnectionColor::None,
             active: false,
             live: true,
+            shell_version: "mongosh 2.4.0".into(),
         }
     }
 

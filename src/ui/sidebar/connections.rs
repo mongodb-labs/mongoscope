@@ -68,6 +68,7 @@ pub struct ConnectionItem {
     pub color: ConnectionColor,
     pub active: bool,
     pub live: bool,
+    pub shell_version: String,
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────

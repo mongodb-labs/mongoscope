@@ -117,7 +117,7 @@ pub fn request_tab<'a, Msg: Clone + 'static>(
     let mut bson_children: Vec<Element<Msg>> = Vec::new();
 
     bson_children.push(
-        text("$db: \"shop\"")
+        text(format!("$db: \"{}\"", entry.db.as_str()))
             .size(fs)
             .color(palette.tok_str)
             .font(iced::Font::MONOSPACE)
@@ -186,20 +186,26 @@ pub fn request_tab<'a, Msg: Clone + 'static>(
         bson_children.push(bson_view(doc, palette, fs));
     }
 
-    bson_children.push(
-        text("lsid: { id: UUID(\"a4b...\") }")
-            .size(fs)
-            .color(fg_dim2)
-            .font(iced::Font::MONOSPACE)
-            .into(),
-    );
-    bson_children.push(
-        text("$clusterTime: { clusterTime: Timestamp(1745512928, 4) }")
-            .size(fs)
-            .color(fg_dim2)
-            .font(iced::Font::MONOSPACE)
-            .into(),
-    );
+    if let Some(ref lsid) = entry.lsid {
+        let lsid_str = format!("lsid: {{ id: {} }}", lsid);
+        bson_children.push(
+            text(lsid_str)
+                .size(fs)
+                .color(fg_dim2)
+                .font(iced::Font::MONOSPACE)
+                .into(),
+        );
+    }
+    if let Some(ref ct) = entry.cluster_time {
+        let ct_str = format!("$clusterTime: {{ clusterTime: {} }}", ct);
+        bson_children.push(
+            text(ct_str)
+                .size(fs)
+                .color(fg_dim2)
+                .font(iced::Font::MONOSPACE)
+                .into(),
+        );
+    }
 
     let body = scrollable(column(bson_children).spacing(4).padding(Padding {
         top: 10.0,

@@ -10,6 +10,9 @@ pub struct QueryId(u64);
 pub struct LatencyMs(u32);
 
 #[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord))]
+pub struct ConnId(u32);
+
+#[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord))]
 pub struct TimestampMs(u64);
 
 #[nutype(
