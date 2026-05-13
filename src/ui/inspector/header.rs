@@ -6,6 +6,9 @@ use iced::{
 
 pub fn inspector_header<Msg: Clone + 'static>(
     entry: &QueryEntry,
+    maximized: bool,
+    on_close: Msg,
+    on_maximize: Msg,
     palette: &Palette,
     fs: f32,
 ) -> Element<'static, Msg> {
@@ -20,7 +23,7 @@ pub fn inspector_header<Msg: Clone + 'static>(
     let id = entry.id.into_inner();
 
     let bg_hover = palette.bg_hover;
-    let action_btn = move |label: &'static str| -> Element<'static, Msg> {
+    let action_btn_msg = move |label: &'static str, msg: Msg| -> Element<'static, Msg> {
         button(
             text(label)
                 .size(11)
@@ -33,6 +36,7 @@ pub fn inspector_header<Msg: Clone + 'static>(
             left: 6.0,
             right: 6.0,
         })
+        .on_press(msg)
         .style(move |_, status| button::Style {
             background: match status {
                 iced::widget::button::Status::Hovered => Some(iced::Background::Color(bg_hover)),
@@ -43,6 +47,8 @@ pub fn inspector_header<Msg: Clone + 'static>(
         })
         .into()
     };
+
+    let maximize_label = if maximized { "↙" } else { "↗" };
 
     container(
         row![
@@ -62,9 +68,8 @@ pub fn inspector_header<Msg: Clone + 'static>(
                 .color(fg_dim2)
                 .font(iced::Font::MONOSPACE),
             iced::widget::Space::new(Length::Fill, 0),
-            action_btn("◉"),
-            action_btn("↗"),
-            action_btn("✕"),
+            action_btn_msg(maximize_label, on_maximize),
+            action_btn_msg("✕", on_close),
         ]
         .spacing(0)
         .align_y(iced::Alignment::Center)

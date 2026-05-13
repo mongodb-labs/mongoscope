@@ -58,6 +58,8 @@ pub enum InspectorMsg {
     Rules(RulesMsg),
     Explain(ExplainMsg),
     SuggestIndex,
+    Close,
+    ToggleMaximize,
 }
 
 pub struct InspectorState {
@@ -139,12 +141,15 @@ impl InspectorState {
             InspectorMsg::Explain(ExplainMsg::CopyIndex) => {
                 // No state change; clipboard write is handled in main.rs.
             }
+            // Handled in main.rs before reaching InspectorState::update.
+            InspectorMsg::Close | InspectorMsg::ToggleMaximize => {}
         }
     }
 
     pub fn view<'a, Msg: Clone + 'static>(
         &'a self,
         entry: Option<&'a QueryEntry>,
+        maximized: bool,
         on_msg: impl Fn(InspectorMsg) -> Msg + 'static + Copy,
         palette: Palette,
         fs: f32,
@@ -260,7 +265,14 @@ impl InspectorState {
         };
 
         let header_el: Element<'a, Msg> = match entry {
-            Some(e) => inspector_header(e, &palette, fs),
+            Some(e) => inspector_header(
+                e,
+                maximized,
+                on_msg(InspectorMsg::Close),
+                on_msg(InspectorMsg::ToggleMaximize),
+                &palette,
+                fs,
+            ),
             None => iced::widget::Space::new(0, 0).into(),
         };
 
