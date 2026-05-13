@@ -23,6 +23,19 @@ use ui::{
     topbar::{conn_bar::ConnInfo, topbar, MenuMsg},
 };
 
+#[derive(Debug, Clone, Default)]
+pub enum InspectorPanel {
+    #[default]
+    Closed,
+    Open {
+        height: f32,
+        drag_start: Option<(f32, f32)>,
+    },
+    Maximized {
+        prev_height: f32,
+    },
+}
+
 #[derive(Debug, Clone)]
 enum Message {
     QueriesReceived(usize, Vec<QueryEntry>),
@@ -38,6 +51,9 @@ enum Message {
     SidebarResizeStart,
     SidebarResizeMove(f32),
     SidebarResizeEnd,
+    InspectorResizeStart,
+    InspectorResizeMove(f32),
+    InspectorResizeEnd,
     Mcp(McpMsg),
 }
 
@@ -48,6 +64,7 @@ struct App {
     density: Density,
     sidebar_width: f32,
     sidebar_dragging: bool,
+    inspector_panel: InspectorPanel,
     mcp_panel: McpPanelState,
 }
 
@@ -60,6 +77,7 @@ impl App {
             density: Density::Compact,
             sidebar_width: 220.0,
             sidebar_dragging: false,
+            inspector_panel: InspectorPanel::default(),
             mcp_panel: McpPanelState::new(),
         };
         if app.sidebar.connections.is_empty() {
@@ -120,7 +138,32 @@ impl App {
                 let new_selected = self.sidebar.active().and_then(|c| c.feed.selected);
                 if new_selected != prev_selected {
                     self.inspector.explain = ExplainState::default();
+                    if new_selected.is_some()
+                        && matches!(self.inspector_panel, InspectorPanel::Closed)
+                    {
+                        self.inspector_panel = InspectorPanel::Open {
+                            height: 300.0,
+                            drag_start: None,
+                        };
+                    }
                 }
+                Task::none()
+            }
+            Message::Inspector(InspectorMsg::Close) => {
+                self.inspector_panel = InspectorPanel::Closed;
+                Task::none()
+            }
+            Message::Inspector(InspectorMsg::ToggleMaximize) => {
+                self.inspector_panel = match &self.inspector_panel {
+                    InspectorPanel::Open { height, .. } => InspectorPanel::Maximized {
+                        prev_height: *height,
+                    },
+                    InspectorPanel::Maximized { prev_height } => InspectorPanel::Open {
+                        height: *prev_height,
+                        drag_start: None,
+                    },
+                    InspectorPanel::Closed => InspectorPanel::Closed,
+                };
                 Task::none()
             }
             Message::Inspector(InspectorMsg::Explain(ExplainMsg::CopyIndex)) => {
@@ -216,6 +259,29 @@ impl App {
             }
             Message::SidebarResizeEnd => {
                 self.sidebar_dragging = false;
+                Task::none()
+            }
+            Message::InspectorResizeStart => {
+                if let InspectorPanel::Open { drag_start, .. } = &mut self.inspector_panel {
+                    *drag_start = None; // will be set on first move
+                }
+                Task::none()
+            }
+            Message::InspectorResizeMove(y) => {
+                if let InspectorPanel::Open { height, drag_start } = &mut self.inspector_panel {
+                    if let Some((start_y, start_h)) = drag_start {
+                        *height = (*start_h + (*start_y - y)).clamp(120.0, 600.0);
+                    } else {
+                        // First move: record start
+                        *drag_start = Some((y, *height));
+                    }
+                }
+                Task::none()
+            }
+            Message::InspectorResizeEnd => {
+                if let InspectorPanel::Open { drag_start, .. } = &mut self.inspector_panel {
+                    *drag_start = None;
+                }
                 Task::none()
             }
             Message::Mcp(m) => match m {
@@ -333,17 +399,44 @@ impl App {
                 .and_then(|id| c.feed.entries.iter().find(|e| e.id == id))
         });
 
-        let inspector_el = self
-            .inspector
-            .view(selected_entry, Message::Inspector, palette, fs);
+        let maximized = matches!(self.inspector_panel, InspectorPanel::Maximized { .. });
+        let inspector_el =
+            self.inspector
+                .view(selected_entry, maximized, Message::Inspector, palette, fs);
 
-        let main_pane = column![
-            container(feed_el).width(Length::Fill).height(Length::Fill),
-            container(inspector_el).width(Length::Fill).height(340),
-        ]
-        .spacing(0)
-        .width(Length::Fill)
-        .height(Length::Fill);
+        let main_pane: Element<Message> = match &self.inspector_panel {
+            InspectorPanel::Closed => container(feed_el)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into(),
+            InspectorPanel::Open { height, .. } => {
+                let resize_handle_h = mouse_area(
+                    container(iced::widget::Space::new(Length::Fill, 4.0)).style(move |_| {
+                        container::Style {
+                            background: Some(iced::Background::Color(border_color)),
+                            ..Default::default()
+                        }
+                    }),
+                )
+                .on_press(Message::InspectorResizeStart)
+                .on_release(Message::InspectorResizeEnd)
+                .interaction(mouse::Interaction::ResizingVertically);
+
+                column![
+                    container(feed_el).width(Length::Fill).height(Length::Fill),
+                    resize_handle_h,
+                    container(inspector_el).width(Length::Fill).height(*height),
+                ]
+                .spacing(0)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into()
+            }
+            InspectorPanel::Maximized { .. } => container(inspector_el)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into(),
+        };
 
         let body_row = row![sidebar_el, resize_handle, main_pane,]
             .spacing(0)
@@ -424,6 +517,16 @@ impl App {
             })
             .collect();
 
+        let inspector_dragging = matches!(
+            self.inspector_panel,
+            InspectorPanel::Open {
+                drag_start: Some(_),
+                ..
+            }
+        );
+
+        let mut all = data_subs;
+
         if self.sidebar_dragging {
             let drag_sub = iced::event::listen_with(|event, _status, _window| match event {
                 iced::Event::Mouse(mouse::Event::CursorMoved { position }) => {
@@ -434,12 +537,23 @@ impl App {
                 }
                 _ => None,
             });
-            let mut all = data_subs;
             all.push(drag_sub);
-            Subscription::batch(all)
-        } else {
-            Subscription::batch(data_subs)
         }
+
+        if inspector_dragging {
+            let drag_sub = iced::event::listen_with(|event, _status, _window| match event {
+                iced::Event::Mouse(mouse::Event::CursorMoved { position }) => {
+                    Some(Message::InspectorResizeMove(position.y))
+                }
+                iced::Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                    Some(Message::InspectorResizeEnd)
+                }
+                _ => None,
+            });
+            all.push(drag_sub);
+        }
+
+        Subscription::batch(all)
     }
 }
 
