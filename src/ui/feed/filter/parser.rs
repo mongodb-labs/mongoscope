@@ -118,17 +118,9 @@ impl Filter {
             }
         }
         match self.preset {
-            Some(Preset::SlowQueries) => {
-                if !entry.slow {
-                    return false;
-                }
-            }
-            Some(Preset::CollScanOnly) => {
-                if entry.plan != Some(Plan::CollScan) {
-                    return false;
-                }
-            }
-            None => {}
+            Some(Preset::SlowQueries) if !entry.slow => return false,
+            Some(Preset::CollScanOnly) if entry.plan != Some(Plan::CollScan) => return false,
+            _ => {}
         }
         if let Some(text) = &self.text {
             let haystack = format!(
