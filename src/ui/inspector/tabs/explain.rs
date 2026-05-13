@@ -229,6 +229,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let accent = palette.accent;
     let border = palette.border;
     let bg = palette.bg;
+    let bg2 = palette.bg2;
     let border2 = Color {
         r: border.r,
         g: border.g,
@@ -273,10 +274,16 @@ pub fn explain_tab<Msg: Clone + 'static>(
         } else {
             border
         };
+        // blend ok at 8% opacity over bg2 for the applied state
         let after_bg_color = if index_applied {
-            Color { a: 0.08, ..ok }
+            Color {
+                r: bg2.r * 0.92 + ok.r * 0.08,
+                g: bg2.g * 0.92 + ok.g * 0.08,
+                b: bg2.b * 0.92 + ok.b * 0.08,
+                a: 1.0,
+            }
         } else {
-            Color::TRANSPARENT
+            bg2
         };
         let after_bar_color = Color { a: 0.8, ..ok };
         let after_max = [ixscan_ms, fetch_ms, sort_after_ms, limit_after_ms]
@@ -345,6 +352,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
             right: 8.0,
         })
         .style(move |_| container::Style {
+            background: Some(iced::Background::Color(bg2)),
             border: Border {
                 color: border,
                 width: 1.0,
@@ -456,34 +464,80 @@ pub fn explain_tab<Msg: Clone + 'static>(
         })
         .into();
 
-        // ── Code pill row
-        // "index" label pill
-        let index_label_bg = Color { a: 0.12, ..accent };
-        let index_pill: Element<'static, Msg> = container(
+        // ── Code pill: single unified pill, segments separated by 1px dividers
+        // Pre-blend colors to avoid alpha compositing issues
+        let index_seg_bg = Color {
+            r: bg2.r * 0.88 + accent.r * 0.12,
+            g: bg2.g * 0.88 + accent.g * 0.12,
+            b: bg2.b * 0.88 + accent.b * 0.12,
+            a: 1.0,
+        };
+        let run_label = if index_applied {
+            "✓ Created"
+        } else {
+            "▶ Run"
+        };
+        let run_seg_bg = if index_applied {
+            Color {
+                r: bg2.r * 0.85 + accent.r * 0.15,
+                g: bg2.g * 0.85 + accent.g * 0.15,
+                b: bg2.b * 0.85 + accent.b * 0.15,
+                a: 1.0,
+            }
+        } else {
+            bg2
+        };
+        let run_fg = if index_applied { accent } else { fg_dim };
+        let run_border_color = if index_applied {
+            Color { a: 0.5, ..accent }
+        } else {
+            border2
+        };
+
+        // 1px vertical separator spanning pill height
+        let vsep = |c: Color| -> Element<'static, Msg> {
+            container(iced::widget::Space::new(0, 0))
+                .width(1)
+                .height(Length::Fill)
+                .style(move |_| container::Style {
+                    background: Some(iced::Background::Color(c)),
+                    ..Default::default()
+                })
+                .into()
+        };
+
+        // Left segment: "index" label with accent-tinted bg, left corners rounded
+        let index_segment: Element<'static, Msg> = container(
             text("index")
-                .size(fs_small)
+                .size(9)
                 .color(accent)
                 .font(iced::Font::MONOSPACE),
         )
+        .center_y(Length::Fill)
         .padding(Padding {
-            top: 3.0,
-            bottom: 3.0,
-            left: 8.0,
-            right: 8.0,
+            top: 0.0,
+            bottom: 0.0,
+            left: 10.0,
+            right: 10.0,
         })
+        .height(Length::Fill)
         .style(move |_| container::Style {
-            background: Some(iced::Background::Color(index_label_bg)),
+            background: Some(iced::Background::Color(index_seg_bg)),
             border: Border {
-                color: accent,
-                width: 1.0,
-                radius: 4.0.into(),
+                radius: iced::border::Radius {
+                    top_left: 4.0,
+                    bottom_left: 4.0,
+                    top_right: 0.0,
+                    bottom_right: 0.0,
+                },
+                ..Default::default()
             },
             ..Default::default()
         })
         .into();
 
-        // Syntax-highlighted command
-        let cmd_display: Element<'static, Msg> = container(
+        // Middle segment: syntax-highlighted createIndex command
+        let code_segment: Element<'static, Msg> = container(
             row![
                 text("db.")
                     .size(fs_small)
@@ -521,24 +575,18 @@ pub fn explain_tab<Msg: Clone + 'static>(
             .spacing(0)
             .align_y(iced::Alignment::Center),
         )
+        .center_y(Length::Fill)
         .padding(Padding {
-            top: 3.0,
-            bottom: 3.0,
-            left: 8.0,
-            right: 8.0,
+            top: 0.0,
+            bottom: 0.0,
+            left: 12.0,
+            right: 12.0,
         })
-        .style(move |_| container::Style {
-            border: Border {
-                color: border2,
-                width: 1.0,
-                radius: 4.0.into(),
-            },
-            ..Default::default()
-        })
+        .width(Length::Fill)
+        .height(Length::Fill)
         .into();
 
-        // Copy button
-        let bg1 = palette.bg1;
+        // Copy button segment
         let copy_btn: Element<'static, Msg> = button(
             text("Copy")
                 .size(fs_small)
@@ -546,36 +594,20 @@ pub fn explain_tab<Msg: Clone + 'static>(
                 .font(iced::Font::MONOSPACE),
         )
         .padding(Padding {
-            top: 3.0,
-            bottom: 3.0,
-            left: 8.0,
-            right: 8.0,
+            top: 7.0,
+            bottom: 7.0,
+            left: 12.0,
+            right: 12.0,
         })
         .on_press(on_msg(ExplainMsg::CopyIndex))
         .style(move |_, _| button::Style {
-            background: Some(iced::Background::Color(bg1)),
-            border: Border {
-                color: border2,
-                width: 1.0,
-                radius: 4.0.into(),
-            },
+            background: Some(iced::Background::Color(bg2)),
             text_color: fg_dim,
             ..Default::default()
         })
         .into();
 
-        // Run button
-        let run_label = if index_applied {
-            "✓ Created"
-        } else {
-            "▶ Run"
-        };
-        let run_bg = if index_applied {
-            Color { a: 0.15, ..accent }
-        } else {
-            bg1
-        };
-        let run_fg = if index_applied { accent } else { fg_dim };
+        // Run button segment (right corners rounded to match outer pill)
         let run_btn: Element<'static, Msg> = button(
             text(run_label)
                 .size(fs_small)
@@ -583,10 +615,10 @@ pub fn explain_tab<Msg: Clone + 'static>(
                 .font(iced::Font::MONOSPACE),
         )
         .padding(Padding {
-            top: 3.0,
-            bottom: 3.0,
-            left: 8.0,
-            right: 8.0,
+            top: 7.0,
+            bottom: 7.0,
+            left: 12.0,
+            right: 12.0,
         })
         .on_press_maybe(if index_applied {
             None
@@ -594,22 +626,46 @@ pub fn explain_tab<Msg: Clone + 'static>(
             Some(on_msg(ExplainMsg::RunIndex))
         })
         .style(move |_, _| button::Style {
-            background: Some(iced::Background::Color(run_bg)),
+            background: Some(iced::Background::Color(run_seg_bg)),
             border: Border {
-                color: if index_applied { accent } else { border2 },
-                width: 1.0,
-                radius: 4.0.into(),
+                radius: iced::border::Radius {
+                    top_left: 0.0,
+                    bottom_left: 0.0,
+                    top_right: 4.0,
+                    bottom_right: 4.0,
+                },
+                ..Default::default()
             },
             text_color: run_fg,
             ..Default::default()
         })
         .into();
 
-        let code_pill_row: Element<'static, Msg> =
-            row![index_pill, cmd_display, copy_btn, run_btn,]
-                .spacing(6)
-                .align_y(iced::Alignment::Center)
-                .into();
+        // Outer unified pill wrapper
+        let code_pill_row: Element<'static, Msg> = container(
+            row![
+                index_segment,
+                vsep(border2),
+                code_segment,
+                vsep(border2),
+                copy_btn,
+                vsep(run_border_color),
+                run_btn,
+            ]
+            .spacing(0)
+            .align_y(iced::Alignment::Center)
+            .height(30),
+        )
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(bg2)),
+            border: Border {
+                color: border2,
+                width: 1.0,
+                radius: 5.0.into(),
+            },
+            ..Default::default()
+        })
+        .into();
 
         let italic_font = iced::Font {
             style: iced::font::Style::Italic,
@@ -649,28 +705,6 @@ pub fn explain_tab<Msg: Clone + 'static>(
                 .into(),
         );
         sugg_col.push(code_pill_row);
-        sugg_col.push(
-            // suggestion 2
-            row![
-                text("add covered projection")
-                    .size(fs_small)
-                    .color(accent)
-                    .font(iced::Font::MONOSPACE)
-                    .width(110),
-                text(".project({ _id: 0, … })")
-                    .size(fs_small)
-                    .color(fg_dim)
-                    .font(iced::Font::MONOSPACE)
-                    .width(Length::Fill),
-                text("avoid FETCH stage")
-                    .size(10)
-                    .color(fg_dim2)
-                    .font(iced::Font::MONOSPACE),
-            ]
-            .spacing(10)
-            .align_y(iced::Alignment::Center)
-            .into(),
-        );
 
         column(sugg_col).spacing(6).into()
     } else {
