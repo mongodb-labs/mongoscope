@@ -80,9 +80,13 @@ impl Filter {
             } else if let Some(val) = token.strip_prefix("app:") {
                 f.app = Some(val.to_lowercase());
             } else if token == "slow" || token == "slow:true" {
-                f.preset = Some(Preset::SlowQueries);
+                if f.preset.is_none() {
+                    f.preset = Some(Preset::SlowQueries);
+                }
             } else if token == "collscan" || token == "collscan:true" {
-                f.preset = Some(Preset::CollScanOnly);
+                if f.preset.is_none() {
+                    f.preset = Some(Preset::CollScanOnly);
+                }
             } else if !token.is_empty() {
                 let t = token.to_lowercase();
                 f.text = Some(match f.text.take() {

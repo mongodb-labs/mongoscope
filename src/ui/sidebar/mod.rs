@@ -289,7 +289,7 @@ impl SidebarState {
             filters_panel(
                 active_preset,
                 move |m| on_msg(SidebarMsg::Filters(m)),
-                palette,
+                *palette,
             ),
         ]
         .spacing(0)

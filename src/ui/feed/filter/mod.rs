@@ -54,6 +54,10 @@ impl FilterState {
         self.sync_input();
     }
 
+    pub fn active_preset(&self) -> Option<Preset> {
+        self.filter.preset
+    }
+
     pub fn matches(&self, entry: &QueryEntry) -> bool {
         self.filter.matches(entry)
     }

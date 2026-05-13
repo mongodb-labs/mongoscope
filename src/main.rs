@@ -395,7 +395,7 @@ impl App {
         let active_preset = self
             .sidebar
             .active()
-            .and_then(|c| c.feed.filter.filter.preset);
+            .and_then(|c| c.feed.filter.active_preset());
         let sidebar_el = self.sidebar.view(
             Message::Sidebar,
             &palette,

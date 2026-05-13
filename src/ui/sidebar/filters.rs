@@ -12,7 +12,7 @@ pub enum FilterPanelMsg {
 pub fn filters_panel<Msg: Clone + 'static>(
     active: Option<Preset>,
     on_msg: impl Fn(FilterPanelMsg) -> Msg + 'static + Copy,
-    palette: &Palette,
+    palette: Palette,
 ) -> Element<'static, Msg> {
     let bg0 = palette.bg;
     let bg_hover = palette.bg_hover;
