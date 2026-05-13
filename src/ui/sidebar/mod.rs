@@ -3,13 +3,13 @@ pub mod collections;
 pub mod connection_state;
 pub mod connections;
 pub mod databases;
-pub mod saved_views;
+pub mod filters;
 pub use connection_state::ConnectionState;
 
 pub use clients::{clients_panel, ClientsMsg};
 pub use connections::{connections_panel, ConnectionItem, ConnectionsMsg};
 pub use databases::{apply_toggle_collection, apply_toggle_db, databases_panel, DatabasesMsg};
-pub use saved_views::{saved_views_panel, SavedView, SavedViewsMsg};
+pub use filters::{filters_panel, FilterPanelMsg};
 
 use crate::{theme::Palette, ui::dialog::ConnectionDialogState};
 use iced::{
@@ -22,14 +22,13 @@ pub enum SidebarMsg {
     Connections(ConnectionsMsg),
     Databases(DatabasesMsg),
     Clients(ClientsMsg),
-    SavedViews(SavedViewsMsg),
+    Filters(FilterPanelMsg),
 }
 
 pub struct SidebarState {
     pub connections: Vec<ConnectionState>,
     pub active_id: Option<usize>,
     pub dialog: Option<ConnectionDialogState>,
-    pub saved_views: Vec<SavedView>,
 }
 
 impl SidebarState {
@@ -38,20 +37,6 @@ impl SidebarState {
             connections: vec![],
             active_id: None,
             dialog: None,
-            saved_views: vec![
-                SavedView {
-                    id: 0,
-                    label: "slow queries (>500ms)".into(),
-                },
-                SavedView {
-                    id: 1,
-                    label: "COLLSCANs only".into(),
-                },
-                SavedView {
-                    id: 2,
-                    label: "writes to orders".into(),
-                },
-            ],
         }
     }
 
@@ -222,10 +207,9 @@ impl SidebarState {
                     }
                 }
             }
-            SidebarMsg::SavedViews(m) => match m {
-                SavedViewsMsg::Delete(id) => self.saved_views.retain(|v| v.id != id),
-                SavedViewsMsg::Load(_) | SavedViewsMsg::Save => {}
-            },
+            SidebarMsg::Filters(_) => {
+                // Preset toggle handled in App::update before reaching here.
+            }
         }
     }
 
@@ -234,6 +218,7 @@ impl SidebarState {
         on_msg: impl Fn(SidebarMsg) -> Msg + 'static + Copy,
         palette: &Palette,
         width: f32,
+        active_preset: Option<crate::ui::feed::filter::parser::Preset>,
     ) -> Element<'static, Msg> {
         let bg = palette.bg;
         let bg1 = palette.bg1;
@@ -300,10 +285,10 @@ impl SidebarState {
             databases_panel(dbs, move |m| on_msg(SidebarMsg::Databases(m)), palette,),
             section_header("CLIENTS".into(), None),
             clients_panel(clients, move |m| on_msg(SidebarMsg::Clients(m)), palette,),
-            section_header("SAVED VIEWS".into(), None),
-            saved_views_panel(
-                &self.saved_views,
-                move |m| on_msg(SidebarMsg::SavedViews(m)),
+            section_header("FILTERS".into(), None),
+            filters_panel(
+                active_preset,
+                move |m| on_msg(SidebarMsg::Filters(m)),
                 palette,
             ),
         ]
