@@ -123,9 +123,17 @@ The schema lookup and cluster label retrieval happen at the call site in `mod.rs
 |---|---|
 | `"OP_MSG"` in request/response headers | MongoDB wire protocol name — factually correct for all modern queries, not per-query data |
 | Button labels (`"copy"`, `"export"`, `"↻ Replay"`, etc.) | UI chrome |
-| Button labels (`"↻ Replay"`, `"◇ Dry-run"`, etc.) | UI chrome, not data |
 | Efficiency threshold labels (`"optimal (1×)"`, etc.) | UI copy |
 | Phase colors in explain flame | Palette-derived, not data |
+
+---
+
+## 6. Acceptance Criteria & Verification
+
+After implementation:
+
+1. `cargo fmt && cargo build && cargo test && cargo clippy` must all pass.
+2. Spawn an Explore agent to audit `src/ui/` using the same methodology as the pre-implementation audit: for every piece of data displayed in the UI (every tab, every field), confirm it flows from a model field or UI-chrome constant. Any remaining hardcoded entry-related value is a failure. The agent must produce a verdict: **PASS** (nothing hardcoded) or **FAIL** (list of remaining violations).
 
 ---
 
