@@ -17,6 +17,7 @@ use iced::{
     Border, Element, Length, Padding,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub fn topbar<Msg: Clone + 'static>(
     conn: &ConnInfo,
     capturing: bool,
@@ -24,6 +25,7 @@ pub fn topbar<Msg: Clone + 'static>(
     on_capture_toggle: Msg,
     mcp_server: &McpServerState,
     on_mcp_toggle: Msg,
+    on_copy_uri: Msg,
     palette: &Palette,
 ) -> Element<'static, Msg> {
     let bg = palette.bg1;
@@ -34,7 +36,7 @@ pub fn topbar<Msg: Clone + 'static>(
             logo(palette),
             menu_bar(on_menu, palette),
             iced::widget::Space::new(Length::Fill, 0),
-            conn_bar(conn, palette),
+            conn_bar(conn, on_copy_uri, palette),
             iced::widget::Space::new(8, 0),
             mcp_button(mcp_server, on_mcp_toggle, palette),
             iced::widget::Space::new(8, 0),

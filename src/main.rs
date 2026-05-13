@@ -55,6 +55,7 @@ enum Message {
     InspectorResizeMove(f32),
     InspectorResizeEnd,
     Mcp(McpMsg),
+    CopyUri,
 }
 
 struct App {
@@ -337,6 +338,19 @@ impl App {
                 }
                 McpMsg::Noop => Task::none(),
             },
+            Message::CopyUri => {
+                let uri = self
+                    .sidebar
+                    .active()
+                    .map(|c| {
+                        format!(
+                            "mongodb://localhost:{}/?directConnection=true",
+                            c.item.proxy_port
+                        )
+                    })
+                    .unwrap_or_else(|| "mongodb://localhost:27017/?directConnection=true".into());
+                iced::clipboard::write::<Message>(uri)
+            }
         }
     }
 
@@ -348,11 +362,17 @@ impl App {
 
         let capturing = self.sidebar.active().map(|c| c.capturing).unwrap_or(false);
 
+        let active = self.sidebar.active();
         let conn = ConnInfo {
-            host: "localhost:27017".into(),
-            uri: "mongoscope://localhost".into(),
-            rs_name: Some("rs0".into()),
-            connected: true,
+            uri: active
+                .map(|c| {
+                    format!(
+                        "mongodb://localhost:{}/?directConnection=true",
+                        c.item.proxy_port
+                    )
+                })
+                .unwrap_or_else(|| "mongodb://localhost:27017/?directConnection=true".into()),
+            connected: active.is_some(),
         };
 
         let top = topbar(
@@ -362,6 +382,7 @@ impl App {
             Message::ToggleCapture,
             &self.mcp_panel.server,
             Message::Mcp(McpMsg::Toggle),
+            Message::CopyUri,
             &palette,
         );
 
