@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use iced::{
-    widget::{column, container, row, scrollable, text},
+    widget::{button, column, container, row, scrollable, text},
     Border, Color, Element, Length, Padding, Radians,
 };
 
@@ -33,6 +33,7 @@ fn separator<Msg: 'static>(border_c: Color) -> Element<'static, Msg> {
 
 pub fn overview_tab<'a, Msg: Clone + 'static>(
     entry: &'a QueryEntry,
+    on_suggest: impl Fn() -> Msg + 'static + Copy,
     palette: &Palette,
     fs: f32,
 ) -> Element<'a, Msg> {
@@ -131,7 +132,7 @@ pub fn overview_tab<'a, Msg: Clone + 'static>(
                 ]
                 .spacing(2)
                 .width(Length::Fill),
-                container(
+                button(
                     text("Suggest index")
                         .size(fs_small)
                         .color(accent)
@@ -143,13 +144,15 @@ pub fn overview_tab<'a, Msg: Clone + 'static>(
                     left: 8.0,
                     right: 8.0
                 })
-                .style(move |_| container::Style {
+                .on_press(on_suggest())
+                .style(move |_, _| button::Style {
                     background: None,
                     border: Border {
                         color: accent,
                         width: 1.0,
                         radius: 5.0.into()
                     },
+                    text_color: accent,
                     ..Default::default()
                 }),
             ]

@@ -8,7 +8,7 @@ pub mod schema;
 pub mod timeline;
 
 pub use compose::{ComposeMsg, ComposeState};
-pub use explain::explain_tab;
+pub use explain::{explain_tab, ExplainMsg, ExplainState};
 pub use overview::overview_tab;
 pub use request::request_tab;
 pub use response::response_tab;
