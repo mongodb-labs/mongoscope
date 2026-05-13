@@ -111,7 +111,7 @@ impl FilterState {
         on_msg: impl Fn(FilterMsg) -> Msg + 'static + Copy,
         on_pause: Msg,
         on_clear: Msg,
-        paused: bool,
+        scroll_locked: bool,
         visible_count: usize,
         total_count: usize,
         palette: Palette,
@@ -130,9 +130,9 @@ impl FilterState {
             fg_dim2
         };
 
-        // Pause button: ‖ when capturing, ▶ when paused
-        let pause_label = if paused { "▶" } else { "||" };
-        let pause_color = if paused { warn } else { fg_dim };
+        // Autoscroll toggle: ‖ when scrolling live, ▶ when locked
+        let pause_label = if scroll_locked { "▶" } else { "||" };
+        let pause_color = if scroll_locked { warn } else { fg_dim };
 
         let pause_btn = button(
             text(pause_label)

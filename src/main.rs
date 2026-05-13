@@ -99,7 +99,7 @@ impl App {
                                 scrollable::AbsoluteOffset { x: 0.0, y: dy },
                             );
                         }
-                    } else if !conn.feed.paused {
+                    } else {
                         conn.feed.pending_scroll_to += 1;
                         return scrollable::scroll_to(
                             scrollable::Id::new(FEED_SCROLL_ID),

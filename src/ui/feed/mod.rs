@@ -34,7 +34,6 @@ pub struct FeedState {
     pub selected: Option<QueryId>,
     pub buckets: Buckets,
     pub now_ms: u64,
-    pub paused: bool,
     pub scroll_locked: bool,
     pub frozen_entries: Vec<QueryEntry>,
     pub pending_scroll_to: u32, // scroll_to(y=0) tasks in flight
@@ -51,7 +50,6 @@ impl FeedState {
             selected: None,
             buckets: Buckets::new(500),
             now_ms: 0,
-            paused: false,
             scroll_locked: false,
             frozen_entries: Vec::new(),
             pending_scroll_to: 0,
@@ -62,9 +60,6 @@ impl FeedState {
     }
 
     pub fn push_entry(&mut self, entry: QueryEntry) -> bool {
-        if self.paused {
-            return false;
-        }
         self.now_ms = entry.t_ms.into_inner();
         self.buckets.push(&entry, self.now_ms);
         self.entries.insert(0, entry);
@@ -80,10 +75,7 @@ impl FeedState {
                 self.scroll_locked = true;
             }
             FeedMsg::TogglePause => {
-                self.paused = !self.paused;
-                if !self.paused {
-                    self.scroll_locked = false;
-                }
+                self.scroll_locked = !self.scroll_locked;
             }
             FeedMsg::ClearEntries => {
                 self.entries.clear();
@@ -93,10 +85,14 @@ impl FeedState {
             }
             FeedMsg::Scrolled(vp) => {
                 let y = vp.absolute_offset().y;
-                // Programmatic scroll_to(y=0) in flight: ignore the y≈0 event it produces
+                // Programmatic scroll_to(y=0) in flight: ignore the y≈0 event it produces,
+                // but only while autoscrolling. When scroll_locked=true the stale counter
+                // must not eat the user's manual scroll-to-top (which should unlock).
                 if y < 1.0 && self.pending_scroll_to > 0 {
                     self.pending_scroll_to = self.pending_scroll_to.saturating_sub(1);
-                    return;
+                    if !self.scroll_locked {
+                        return;
+                    }
                 }
                 // Programmatic scroll_by(dy) in flight: ignore the y>0 event it produces.
                 // Without this guard, a scroll_by issued while scroll_locked=true can land
@@ -205,7 +201,7 @@ impl FeedState {
                 move |m| on_msg(FeedMsg::Filter(m)),
                 on_msg(FeedMsg::TogglePause),
                 on_msg(FeedMsg::ClearEntries),
-                self.paused,
+                self.scroll_locked,
                 visible_count,
                 total_count,
                 palette,

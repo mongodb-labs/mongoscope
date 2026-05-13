@@ -1,7 +1,7 @@
 use crate::theme::Palette;
 use iced::{
     widget::{button, container, row, text},
-    Border, Element, Padding,
+    Border, Color, Element, Padding,
 };
 
 pub fn capture_indicator<Msg: Clone + 'static>(
@@ -9,12 +9,18 @@ pub fn capture_indicator<Msg: Clone + 'static>(
     on_toggle: Msg,
     palette: &Palette,
 ) -> Element<'static, Msg> {
-    if !capturing {
-        return iced::widget::Space::new(0, 0).into();
-    }
-
-    let danger = palette.danger;
-    let accent_fg = palette.accent_fg;
+    let (dot_color, label_color, bg_color, label) = if capturing {
+        let danger = palette.danger;
+        let accent_fg = palette.accent_fg;
+        (accent_fg, accent_fg, danger, "CAPTURING")
+    } else {
+        let muted = palette.fg_dim;
+        let bg = Color {
+            a: 0.15,
+            ..palette.fg_dim
+        };
+        (muted, muted, bg, "PAUSED")
+    };
 
     let pill = container(
         row![
@@ -22,16 +28,16 @@ pub fn capture_indicator<Msg: Clone + 'static>(
                 .width(6)
                 .height(6)
                 .style(move |_| container::Style {
-                    background: Some(iced::Background::Color(accent_fg)),
+                    background: Some(iced::Background::Color(dot_color)),
                     border: Border {
                         radius: 3.0.into(),
                         ..Default::default()
                     },
                     ..Default::default()
                 }),
-            text("CAPTURING")
+            text(label)
                 .size(10)
-                .color(accent_fg)
+                .color(label_color)
                 .font(iced::Font::MONOSPACE),
         ]
         .spacing(4)
@@ -44,7 +50,7 @@ pub fn capture_indicator<Msg: Clone + 'static>(
         right: 8.0,
     })
     .style(move |_| container::Style {
-        background: Some(iced::Background::Color(danger)),
+        background: Some(iced::Background::Color(bg_color)),
         border: Border {
             radius: 10.0.into(),
             ..Default::default()
