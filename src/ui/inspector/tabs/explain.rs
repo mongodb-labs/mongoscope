@@ -222,7 +222,6 @@ pub fn explain_tab<Msg: Clone + 'static>(
     };
     let fg = palette.fg;
     let danger = palette.danger;
-    let warn = palette.warn;
     let ok = palette.ok;
     let tok_call = palette.tok_call;
     let tok_str = palette.tok_str;
@@ -230,6 +229,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let index_applied = state.index_applied;
 
     let sugg_content: Element<'static, Msg> = if is_bad {
+        let warn = palette.warn;
         // ── Before ms values (from explain_stages mock)
         let collscan_ms = (total_ms as f32 * 0.92) as u32;
         let sort_ms = (total_ms as f32 * 0.06) as u32;
@@ -264,7 +264,11 @@ pub fn explain_tab<Msg: Clone + 'static>(
             Color::TRANSPARENT
         };
         let after_bar_color = Color { a: 0.8, ..ok };
-        let after_max: f32 = fetch_ms as f32; // widest in after column
+        let after_max = [ixscan_ms, fetch_ms, sort_after_ms, limit_after_ms]
+            .iter()
+            .copied()
+            .max()
+            .unwrap_or(1) as f32;
 
         // Before column header
         let before_header_color = Color {
@@ -456,15 +460,13 @@ pub fn explain_tab<Msg: Clone + 'static>(
         .into();
 
         // Syntax-highlighted command
-        let coll2 = coll.clone();
-        let first_key2 = first_key.clone();
         let cmd_display: Element<'static, Msg> = container(
             row![
                 text("db.")
                     .size(fs_small)
                     .color(fg_dim)
                     .font(iced::Font::MONOSPACE),
-                text(coll2)
+                text(coll.clone())
                     .size(fs_small)
                     .color(fg)
                     .font(iced::Font::MONOSPACE),
@@ -476,7 +478,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
                     .size(fs_small)
                     .color(fg)
                     .font(iced::Font::MONOSPACE),
-                text(format!("\"{}\"", first_key2))
+                text(format!("\"{}\"", first_key.clone()))
                     .size(fs_small)
                     .color(tok_str)
                     .font(iced::Font::MONOSPACE),
@@ -563,7 +565,11 @@ pub fn explain_tab<Msg: Clone + 'static>(
             left: 8.0,
             right: 8.0,
         })
-        .on_press(on_msg(ExplainMsg::RunIndex))
+        .on_press_maybe(if index_applied {
+            None
+        } else {
+            Some(on_msg(ExplainMsg::RunIndex))
+        })
         .style(move |_, _| button::Style {
             background: Some(iced::Background::Color(run_bg)),
             border: Border {
@@ -670,9 +676,6 @@ pub fn explain_tab<Msg: Clone + 'static>(
         .spacing(6)
         .into()
     };
-
-    // suppress unused variable warnings for non-bad path
-    let _ = warn;
 
     let sugg_card = mini_card(sugg_content, palette);
 

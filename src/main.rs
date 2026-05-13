@@ -13,7 +13,10 @@ use theme::{Density, Theme};
 use ui::{
     dialog::dialog_view,
     feed::{FeedMsg, FEED_SCROLL_ID},
-    inspector::{tabs::ExplainMsg, InspectorMsg, InspectorState},
+    inspector::{
+        tabs::{ExplainMsg, ExplainState},
+        InspectorMsg, InspectorState,
+    },
     mcp_panel::{McpMsg, McpPanelState, McpServerState},
     sidebar::{connections::ConnectionsMsg, SidebarMsg, SidebarState},
     statusbar::{statusbar, StatusInfo},
@@ -110,8 +113,13 @@ impl App {
                 Task::none()
             }
             Message::Feed(m) => {
+                let prev_selected = self.sidebar.active().and_then(|c| c.feed.selected);
                 if let Some(conn) = self.sidebar.active_mut() {
                     conn.feed.update(m);
+                }
+                let new_selected = self.sidebar.active().and_then(|c| c.feed.selected);
+                if new_selected != prev_selected {
+                    self.inspector.explain = ExplainState::default();
                 }
                 Task::none()
             }

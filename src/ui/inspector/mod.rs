@@ -131,6 +131,7 @@ impl InspectorState {
             InspectorMsg::Rules(_) => {}
             InspectorMsg::SuggestIndex => {
                 self.tab = InspectorTab::Explain;
+                self.explain = ExplainState::default();
             }
             InspectorMsg::Explain(ExplainMsg::RunIndex) => {
                 self.explain.index_applied = true;
