@@ -36,11 +36,11 @@ pub struct FeedState {
     pub now_ms: u64,
     pub scroll_locked: bool,
     pub frozen_entries: Vec<QueryEntry>,
-    pub pending_scroll_to: u32,      // scroll_to(y=0) tasks in flight
-    pub pending_scroll_by: u32,      // scroll_by(dy) tasks in flight
-    pub pending_layout_reflow: u32,  // absorbs spurious Scrolled events from layout changes
-    pub scroll_y: f32,          // latest real scroll position
-    pub prev_scroll_y: f32,     // scroll position before that (direction detection)
+    pub pending_scroll_to: u32,     // scroll_to(y=0) tasks in flight
+    pub pending_scroll_by: u32,     // scroll_by(dy) tasks in flight
+    pub pending_layout_reflow: u32, // absorbs spurious Scrolled events from layout changes
+    pub scroll_y: f32,              // latest real scroll position
+    pub prev_scroll_y: f32,         // scroll position before that (direction detection)
 }
 
 impl FeedState {
@@ -104,10 +104,12 @@ impl FeedState {
                         return;
                     }
                 }
-                // Programmatic scroll_by(dy) in flight: ignore the y>0 event it produces.
-                // Without this guard, a scroll_by issued while scroll_locked=true can land
-                // after the user scrolls back to top, firing y=dy > threshold → re-locks.
-                if y > 50.0 && self.pending_scroll_by > 0 {
+                // Programmatic scroll_by(dy) in flight: ignore the event it produces.
+                // y>50: scrollable moved (normal case). y<1: no-scrollbar case where the
+                // scrollable couldn't actually move and echoes y=0 instead.
+                // Without this guard a scroll_by can land after the user scrolled back to
+                // top and fire y=dy > threshold → re-locks, or y=0 → unlocks.
+                if !(1.0..=50.0).contains(&y) && self.pending_scroll_by > 0 {
                     self.pending_scroll_by = self.pending_scroll_by.saturating_sub(1);
                     return;
                 }
