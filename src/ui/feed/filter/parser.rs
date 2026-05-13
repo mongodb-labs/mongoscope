@@ -224,6 +224,11 @@ mod tests {
             doc: None,
             warn: None,
             slow: false,
+            conn_id: ConnId::new(10001),
+            lsid: None,
+            cluster_time: None,
+            response_docs: vec![],
+            rejected_plan_count: 0,
         }
     }
 

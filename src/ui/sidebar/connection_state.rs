@@ -82,6 +82,7 @@ mod tests {
             color: ConnectionColor::None,
             active: true,
             live: true,
+            shell_version: "mongosh 2.4.0".into(),
         }
     }
 

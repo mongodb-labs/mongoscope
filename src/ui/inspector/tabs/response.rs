@@ -1,13 +1,8 @@
-use crate::{
-    data::model::{BsonDoc, BsonVal, Op, QueryEntry},
-    theme::Palette,
-    ui::widgets::bson_view::bson_view,
-};
+use crate::{data::model::QueryEntry, theme::Palette, ui::widgets::bson_view::bson_view};
 use iced::{
     widget::{column, container, row, scrollable, text},
     Border, Color, Element, Length, Padding,
 };
-use indexmap::IndexMap;
 
 fn ghost_action<'a, Msg: 'a>(
     label: &'a str,
@@ -34,85 +29,6 @@ fn ghost_action<'a, Msg: 'a>(
         .into()
 }
 
-fn mock_doc(coll: &str, i: usize) -> BsonDoc {
-    let mut doc: BsonDoc = IndexMap::new();
-    doc.insert(
-        "_id".into(),
-        BsonVal::ObjectId(format!("66f{:02x}c4", i + 1)),
-    );
-    match coll {
-        "orders" => {
-            doc.insert(
-                "userId".into(),
-                BsonVal::ObjectId("65fe21c3a8b4e9c2d1f04a12".into()),
-            );
-            doc.insert("total".into(), BsonVal::Float(49.0 + i as f64 * 17.33));
-            doc.insert("status".into(), BsonVal::Str("paid".into()));
-            doc.insert(
-                "createdAt".into(),
-                BsonVal::IsoDate(format!("2026-04-{}T09:{:02}:41Z", 20 + i, 12 + i)),
-            );
-        }
-        "products" => {
-            let names = ["Linen Shirt", "Field Jacket", "Canvas Sneakers"];
-            doc.insert(
-                "sku".into(),
-                BsonVal::Str(format!("SKU-{}-BLK-M", 88421 + i)),
-            );
-            doc.insert(
-                "name".into(),
-                BsonVal::Str(names.get(i).copied().unwrap_or("—").into()),
-            );
-            doc.insert("price".into(), BsonVal::Int(49 + i as i64 * 20));
-            doc.insert("inStock".into(), BsonVal::Bool(true));
-        }
-        _ => {
-            doc.insert("type".into(), BsonVal::Str("event".into()));
-            doc.insert(
-                "ts".into(),
-                BsonVal::IsoDate(format!("2026-04-24T{}:22:08Z", 14 + i)),
-            );
-        }
-    }
-    doc
-}
-
-fn build_response(entry: &QueryEntry) -> BsonDoc {
-    let coll = entry.coll.as_str();
-    let is_read = matches!(
-        &entry.op,
-        Op::Find | Op::FindOne | Op::Aggregate | Op::CountDocuments
-    );
-    let n = entry
-        .docs_returned
-        .as_ref()
-        .map(|d| d.into_inner())
-        .unwrap_or(1) as usize;
-
-    if is_read {
-        let count = n.min(3);
-        let batch: Vec<BsonVal> = (0..count)
-            .map(|i| BsonVal::Doc(mock_doc(coll, i)))
-            .collect();
-        let mut cursor: BsonDoc = IndexMap::new();
-        cursor.insert("firstBatch".into(), BsonVal::Array(batch));
-        cursor.insert("id".into(), BsonVal::NumberLong(0));
-        cursor.insert("ns".into(), BsonVal::Str(format!("shop.{}", coll)));
-        let mut resp: BsonDoc = IndexMap::new();
-        resp.insert("cursor".into(), BsonVal::Doc(cursor));
-        resp.insert("ok".into(), BsonVal::Int(1));
-        resp
-    } else {
-        let mut resp: BsonDoc = IndexMap::new();
-        resp.insert("n".into(), BsonVal::Int(n as i64));
-        if matches!(&entry.op, Op::UpdateOne | Op::UpdateMany) {
-            resp.insert("nModified".into(), BsonVal::Int(n as i64));
-        }
-        resp.insert("ok".into(), BsonVal::Int(1));
-        resp
-    }
-}
-
 pub fn response_tab<Msg: 'static>(
     entry: &QueryEntry,
     palette: &Palette,
@@ -126,12 +42,8 @@ pub fn response_tab<Msg: 'static>(
     let border_color = palette.border;
     let fs_small = (fs - 1.0).max(9.0);
 
-    let n_docs = entry
-        .docs_returned
-        .as_ref()
-        .map(|d| d.into_inner())
-        .unwrap_or(1);
-    let byte_est = n_docs as usize * 412;
+    let n_docs = entry.response_docs.len() as u64;
+    let byte_est = entry.response_docs.len() * 412;
 
     // ── Response header
     let header = container(
@@ -195,10 +107,12 @@ pub fn response_tab<Msg: 'static>(
         ..Default::default()
     });
 
-    let resp_doc = build_response(entry);
-    let bson_el = bson_view(&resp_doc, palette, fs);
+    let mut doc_elements: Vec<Element<'static, Msg>> = Vec::new();
+    for doc in &entry.response_docs {
+        doc_elements.push(bson_view(doc, palette, fs));
+    }
 
-    let body = scrollable(column![bson_el].padding(Padding {
+    let body = scrollable(column(doc_elements).spacing(6).padding(Padding {
         top: 10.0,
         bottom: 10.0,
         left: 8.0,

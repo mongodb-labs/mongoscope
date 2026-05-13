@@ -1,7 +1,6 @@
 pub mod appdot;
 pub mod bson_view;
 pub mod flame_row;
-pub mod gantt;
 pub mod ghost_btn;
 pub mod icon_btn;
 pub mod kv_grid;

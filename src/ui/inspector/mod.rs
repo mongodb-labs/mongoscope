@@ -1,15 +1,15 @@
 pub mod header;
 pub mod tabs;
 
-use crate::{data::model::QueryEntry, theme::Palette};
+use crate::{data::model, data::model::QueryEntry, theme::Palette};
 use header::inspector_header;
 use iced::{
     widget::{column, container, row},
     Border, Color, Element, Length, Padding,
 };
 use tabs::{
-    explain_tab, overview_tab, request_tab, response_tab, rules_tab, schema_tab, timeline_tab,
-    ComposeMsg, ComposeState, ExplainMsg, ExplainState, Rule, RuleAction, RulesMsg,
+    explain_tab, overview_tab, request_tab, response_tab, rules_tab, schema_tab, ComposeMsg,
+    ComposeState, ExplainMsg, ExplainState, Rule, RuleAction, RulesMsg,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,7 +18,6 @@ pub enum InspectorTab {
     Request,
     Response,
     Explain,
-    Timeline,
     Compose,
     Rules,
     Schema,
@@ -31,7 +30,6 @@ impl InspectorTab {
             InspectorTab::Request => "Request",
             InspectorTab::Response => "Response",
             InspectorTab::Explain => "Explain",
-            InspectorTab::Timeline => "Timeline",
             InspectorTab::Compose => "Compose",
             InspectorTab::Rules => "Rules",
             InspectorTab::Schema => "Schema",
@@ -43,7 +41,6 @@ impl InspectorTab {
             InspectorTab::Request,
             InspectorTab::Response,
             InspectorTab::Explain,
-            InspectorTab::Timeline,
             InspectorTab::Compose,
             InspectorTab::Rules,
             InspectorTab::Schema,
@@ -146,6 +143,7 @@ impl InspectorState {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn view<'a, Msg: Clone + 'static>(
         &'a self,
         entry: Option<&'a QueryEntry>,
@@ -153,6 +151,8 @@ impl InspectorState {
         on_msg: impl Fn(InspectorMsg) -> Msg + 'static + Copy,
         palette: Palette,
         fs: f32,
+        cluster_label: &str,
+        shell_version: &str,
     ) -> Element<'a, Msg> {
         let bg1 = palette.bg1;
         let bg = palette.bg;
@@ -224,6 +224,8 @@ impl InspectorState {
         let tab_bar = column![tab_row, tab_border];
 
         let fg_dim2 = palette.fg_dim2;
+        let schemas = model::mock_schemas();
+
         let content: Element<'a, Msg> = match entry {
             None => container(
                 iced::widget::text("Select a query to inspect")
@@ -249,18 +251,23 @@ impl InspectorState {
                     &palette,
                     fs,
                 ),
-                InspectorTab::Timeline => timeline_tab(e, &palette, fs),
-                InspectorTab::Compose => {
-                    self.compose
-                        .view(move |m| on_msg(InspectorMsg::Compose(m)), palette, fs)
-                }
+                InspectorTab::Compose => self.compose.view(
+                    move |m| on_msg(InspectorMsg::Compose(m)),
+                    palette,
+                    fs,
+                    cluster_label,
+                    shell_version,
+                ),
                 InspectorTab::Rules => rules_tab(
                     &self.rules,
                     move |m| on_msg(InspectorMsg::Rules(m)),
                     &palette,
                     fs,
                 ),
-                InspectorTab::Schema => schema_tab(e, &palette, fs),
+                InspectorTab::Schema => {
+                    let schema = schemas.iter().find(|s| s.coll == e.coll);
+                    schema_tab(e, schema, &palette, fs)
+                }
             },
         };
 

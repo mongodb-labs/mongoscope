@@ -33,12 +33,13 @@ fn separator<Msg: 'static>(border_c: Color) -> Element<'static, Msg> {
         .into()
 }
 
-fn action_label<'a, Msg: 'a>(
-    label: &'a str,
+fn action_label<Msg: 'static>(
+    label: &str,
     active: bool,
     palette: &Palette,
     fs: f32,
-) -> Element<'a, Msg> {
+) -> Element<'static, Msg> {
+    let label = label.to_owned();
     let (bg, fg, border) = if active {
         (palette.bg_sel, palette.fg, palette.accent)
     } else {
@@ -144,6 +145,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
     fs: f32,
 ) -> Element<'static, Msg> {
     let total_ms = entry.latency_ms.into_inner();
+    let rejected_plan_count = entry.rejected_plan_count;
     let stages = explain_stages(entry, total_ms);
     let fs_small = (fs - 1.0).max(9.0);
 
@@ -179,7 +181,12 @@ pub fn explain_tab<Msg: Clone + 'static>(
                 action_label("Tree", false, palette, fs_small),
                 action_label("Flame", true, palette, fs_small),
                 action_label("Raw", false, palette, fs_small),
-                action_label("Rejected plans (3)", false, palette, fs_small),
+                action_label(
+                    &format!("Rejected plans ({})", rejected_plan_count),
+                    false,
+                    palette,
+                    fs_small
+                ),
             ]
             .spacing(4),
         ]
@@ -251,11 +258,11 @@ pub fn explain_tab<Msg: Clone + 'static>(
         let sort_ms = (total_ms as f32 * 0.06) as u32;
         let limit_before_ms: u32 = 1;
 
-        // ── After ms values
-        let ixscan_ms: u32 = 1;
-        let fetch_ms: u32 = 2;
-        let sort_after_ms: u32 = 1;
-        let limit_after_ms: u32 = 0;
+        // ── After ms values (fractions of total, matching before-plan stage ratios)
+        let ixscan_ms: u32 = (total_ms as f32 * 0.35) as u32;
+        let fetch_ms: u32 = (total_ms as f32 * 0.45) as u32;
+        let sort_after_ms: u32 = (total_ms as f32 * 0.15) as u32;
+        let limit_after_ms: u32 = total_ms.saturating_sub(ixscan_ms + fetch_ms + sort_after_ms);
 
         // bar color for before column: dimmed if index applied
         let before_bar_color = Color {

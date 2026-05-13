@@ -428,9 +428,20 @@ impl App {
         });
 
         let maximized = matches!(self.inspector_panel, InspectorPanel::Maximized { .. });
-        let inspector_el =
-            self.inspector
-                .view(selected_entry, maximized, Message::Inspector, palette, fs);
+        let active_conn = self.sidebar.active();
+        let cluster_label = active_conn.map(|c| c.item.label.as_str()).unwrap_or("—");
+        let shell_version = active_conn
+            .map(|c| c.item.shell_version.as_str())
+            .unwrap_or("mongosh 2.4.0");
+        let inspector_el = self.inspector.view(
+            selected_entry,
+            maximized,
+            Message::Inspector,
+            palette,
+            fs,
+            cluster_label,
+            shell_version,
+        );
 
         let main_pane: Element<Message> = match &self.inspector_panel {
             InspectorPanel::Closed => container(feed_el)
