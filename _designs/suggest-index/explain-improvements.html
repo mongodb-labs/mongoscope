@@ -1,0 +1,381 @@
+<h2>Explain tab — improvement ideas</h2>
+<p class="subtitle">Focus on the suggestions card + apply action. Which direction feels right?</p>
+
+<style>
+  :root {
+    --ms-bg:      #0B0D10;
+    --ms-bg1:     #131518;
+    --ms-bg2:     #1A1D21;
+    --ms-fg:      #E9EBED;
+    --ms-fg-dim:  #878D92;
+    --ms-fg-dim2: #5E6468;
+    --ms-border:  #212428;
+    --ms-border2: #2B2E32;
+    --ms-accent:  #6DD17F;
+    --ms-warn:    #F7B83D;
+    --ms-danger:  #FA6863;
+  }
+
+  .ms-shell {
+    background: var(--ms-bg);
+    border: 1px solid var(--ms-border);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+    font-size: 11px;
+    color: var(--ms-fg);
+    overflow: hidden;
+    width: 100%;
+  }
+  .ms-tabbar {
+    background: var(--ms-bg1);
+    border-bottom: 1px solid var(--ms-border);
+    display: flex;
+    height: 30px;
+    align-items: stretch;
+  }
+  .ms-tab {
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    color: var(--ms-fg-dim);
+    font-size: 11px;
+    border-bottom: 2px solid transparent;
+    position: relative;
+    top: 1px;
+  }
+  .ms-tab.active { color: var(--ms-fg); border-bottom-color: var(--ms-accent); }
+  .ms-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  /* Explain header */
+  .ms-exhd {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--ms-border);
+    font-size: 11px;
+  }
+  .ms-plan-bad { color: var(--ms-danger); }
+  .ms-plan-ok  { color: var(--ms-accent); }
+  .ms-view-tabs { display: flex; gap: 4px; }
+  .ms-vtab {
+    padding: 2px 8px;
+    border: 1px solid var(--ms-border);
+    border-radius: 5px;
+    font-size: 10px;
+    color: var(--ms-fg-dim);
+  }
+  .ms-vtab.on { background: var(--ms-bg_sel, rgba(109,209,127,0.1)); color: var(--ms-fg); border-color: var(--ms-accent); }
+
+  /* Flame */
+  .ms-flame { display: flex; flex-direction: column; gap: 3px; }
+  .ms-flame-row { display: flex; gap: 8px; align-items: center; }
+  .ms-flame-name { width: 110px; color: var(--ms-fg-dim); font-size: 11px; flex-shrink: 0; }
+  .ms-flame-bar-wrap { flex: 1; height: 18px; background: var(--ms-bg2); border-radius: 3px; overflow: hidden; }
+  .ms-flame-fill { height: 100%; display: flex; align-items: center; padding-left: 6px; font-size: 10px; color: #0B0D10; border-radius: 3px; }
+  .ms-flame-fill.bad  { background: var(--ms-danger); }
+  .ms-flame-fill.warn { background: var(--ms-warn); }
+  .ms-flame-fill.ok   { background: var(--ms-accent); }
+
+  /* Mini card */
+  .ms-mini-card {
+    background: var(--ms-bg1);
+    border: 1px solid var(--ms-border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .ms-mini-hd { font-size: 9px; color: var(--ms-fg-dim2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+
+  .ms-divider { height: 1px; background: rgba(43,46,50,0.8); margin: 6px 0; }
+
+  /* Suggestion row variants */
+  .ms-sugg-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+  .ms-sugg-kind { color: var(--ms-accent); font-size: 11px; width: 110px; flex-shrink: 0; }
+  .ms-sugg-code { color: var(--ms-fg-dim); font-size: 11px; flex: 1; }
+  .ms-sugg-est  { color: var(--ms-fg-dim2); font-size: 10px; white-space: nowrap; }
+
+  .ms-ghost-btn {
+    border: 1px solid var(--ms-border2);
+    border-radius: 4px;
+    padding: 2px 8px;
+    color: var(--ms-fg-dim);
+    background: none;
+    font-size: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .ms-ghost-btn.accent {
+    border-color: var(--ms-accent);
+    color: var(--ms-accent);
+  }
+  .ms-ghost-btn.primary {
+    background: var(--ms-accent);
+    border-color: var(--ms-accent);
+    color: #0B0D10;
+    font-size: 11px;
+    padding: 4px 12px;
+  }
+
+  /* Status states */
+  .ms-status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    padding: 6px 0;
+  }
+  .ms-status-running { color: var(--ms-warn); }
+  .ms-status-done    { color: var(--ms-accent); }
+  .ms-status-err     { color: var(--ms-danger); }
+
+  /* Before/after split */
+  .ms-ba-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ms-ba-col { display: flex; flex-direction: column; gap: 4px; }
+  .ms-ba-label {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ms-fg-dim2);
+    margin-bottom: 2px;
+  }
+  .ms-ba-plan {
+    background: var(--ms-bg2);
+    border: 1px solid var(--ms-border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ms-ba-row { display: flex; align-items: center; gap: 6px; font-size: 10px; }
+  .ms-ba-name { width: 80px; color: var(--ms-fg-dim); }
+  .ms-ba-bar { height: 10px; border-radius: 2px; }
+  .ms-ba-ms  { color: var(--ms-fg-dim2); font-size: 10px; }
+
+  /* Index detail box */
+  .ms-idx-box {
+    background: var(--ms-bg2);
+    border: 1px solid var(--ms-border2);
+    border-radius: 4px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ms-idx-cmd { color: var(--ms-accent); font-size: 11px; }
+  .ms-idx-fields { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ms-idx-field {
+    background: rgba(109,209,127,0.1);
+    border: 1px solid rgba(109,209,127,0.3);
+    border-radius: 3px;
+    padding: 2px 7px;
+    font-size: 10px;
+    color: var(--ms-accent);
+  }
+  .ms-idx-meta { display: flex; gap: 16px; }
+  .ms-idx-meta-item { display: flex; flex-direction: column; gap: 1px; }
+  .ms-idx-meta-val { font-size: 13px; color: var(--ms-accent); }
+  .ms-idx-meta-lbl { font-size: 9px; color: var(--ms-fg-dim2); }
+
+  .ms-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ms-action-btns { display: flex; gap: 6px; }
+</style>
+
+<div class="options">
+
+  <!-- Option A: Apply button with inline status -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Apply button with inline status</h3>
+      <p>Suggestions card gets a prominent "Create index" button. Clicking it shows running → done state inline. Clean, minimal, focused on the action.</p>
+      <div class="ms-shell" style="margin-top:10px;">
+        <div class="ms-tabbar">
+          <div class="ms-tab">Overview</div>
+          <div class="ms-tab active">Explain</div>
+        </div>
+        <div class="ms-body">
+          <div class="ms-exhd">
+            <span>winning plan · <span class="ms-plan-bad">COLLSCAN</span></span>
+            <div class="ms-view-tabs">
+              <span class="ms-vtab">Tree</span>
+              <span class="ms-vtab on">Flame</span>
+              <span class="ms-vtab">Raw</span>
+            </div>
+          </div>
+          <div class="ms-flame">
+            <div class="ms-flame-row">
+              <span class="ms-flame-name">COLLSCAN</span>
+              <div class="ms-flame-bar-wrap"><div class="ms-flame-fill bad" style="width:92%;">247ms</div></div>
+            </div>
+            <div class="ms-flame-row">
+              <span class="ms-flame-name">SORT (in mem)</span>
+              <div class="ms-flame-bar-wrap"><div class="ms-flame-fill warn" style="width:6%;">16ms</div></div>
+            </div>
+          </div>
+          <div class="ms-mini-card">
+            <div class="ms-mini-hd">suggestions</div>
+            <div class="ms-sugg-row">
+              <span class="ms-sugg-kind">create index</span>
+              <span class="ms-sugg-code">db.orders.createIndex({ status: 1 })</span>
+              <span class="ms-sugg-est">est. ~4ms</span>
+            </div>
+            <div style="display:flex; gap:6px; margin-top:8px; padding-left:0;">
+              <button class="ms-ghost-btn accent">Copy</button>
+              <button class="ms-ghost-btn primary">▶ Create index</button>
+            </div>
+            <!-- after clicking: shows this status row -->
+            <div class="ms-status-row ms-status-done" style="margin-top:6px;">
+              ✓ Index created · db.orders.createIndex({ status: 1 })
+            </div>
+            <div class="ms-divider"></div>
+            <div class="ms-sugg-row">
+              <span class="ms-sugg-kind">covered proj.</span>
+              <span class="ms-sugg-code">.project({ _id: 0, … })</span>
+              <span class="ms-sugg-est">avoid FETCH</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Rich index card with fields + metrics -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Rich index card</h3>
+      <p>Suggestions card shows a dedicated index detail box with field chips, estimated metrics, and a full-width "Create index" action. More context before you commit.</p>
+      <div class="ms-shell" style="margin-top:10px;">
+        <div class="ms-tabbar">
+          <div class="ms-tab">Overview</div>
+          <div class="ms-tab active">Explain</div>
+        </div>
+        <div class="ms-body">
+          <div class="ms-exhd">
+            <span>winning plan · <span class="ms-plan-bad">COLLSCAN</span></span>
+            <div class="ms-view-tabs">
+              <span class="ms-vtab on">Flame</span>
+              <span class="ms-vtab">Tree</span>
+              <span class="ms-vtab">Raw</span>
+            </div>
+          </div>
+          <div class="ms-flame">
+            <div class="ms-flame-row">
+              <span class="ms-flame-name">COLLSCAN</span>
+              <div class="ms-flame-bar-wrap"><div class="ms-flame-fill bad" style="width:92%;">247ms</div></div>
+            </div>
+          </div>
+          <div class="ms-mini-card">
+            <div class="ms-mini-hd">suggested index</div>
+            <div class="ms-idx-box">
+              <div class="ms-idx-cmd">db.orders.createIndex({ status: 1 })</div>
+              <div class="ms-idx-fields">
+                <span class="ms-idx-field">status ↑</span>
+              </div>
+              <div class="ms-idx-meta">
+                <div class="ms-idx-meta-item">
+                  <span class="ms-idx-meta-val">~4ms</span>
+                  <span class="ms-idx-meta-lbl">est. latency</span>
+                </div>
+                <div class="ms-idx-meta-item">
+                  <span class="ms-idx-meta-val">99.9%</span>
+                  <span class="ms-idx-meta-lbl">faster</span>
+                </div>
+                <div class="ms-idx-meta-item">
+                  <span class="ms-idx-meta-val">IXSCAN</span>
+                  <span class="ms-idx-meta-lbl">new plan</span>
+                </div>
+              </div>
+            </div>
+            <div class="ms-action-row" style="margin-top:8px;">
+              <button class="ms-ghost-btn">Copy command</button>
+              <div class="ms-action-btns">
+                <button class="ms-ghost-btn primary">▶ Create index</button>
+              </div>
+            </div>
+            <div class="ms-divider"></div>
+            <div class="ms-sugg-row">
+              <span class="ms-sugg-kind" style="color:var(--ms-fg-dim);">also: covered proj.</span>
+              <span class="ms-sugg-code">.project({ _id: 0, … })</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C: Before/after plan preview -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Before / after plan preview</h3>
+      <p>Suggestions card shows a split "current plan vs. projected plan with index." Visualizes the impact before you create it. "Create index" button below.</p>
+      <div class="ms-shell" style="margin-top:10px;">
+        <div class="ms-tabbar">
+          <div class="ms-tab">Overview</div>
+          <div class="ms-tab active">Explain</div>
+        </div>
+        <div class="ms-body">
+          <div class="ms-exhd">
+            <span>winning plan · <span class="ms-plan-bad">COLLSCAN</span></span>
+          </div>
+          <div class="ms-flame">
+            <div class="ms-flame-row">
+              <span class="ms-flame-name">COLLSCAN</span>
+              <div class="ms-flame-bar-wrap"><div class="ms-flame-fill bad" style="width:92%;">247ms</div></div>
+            </div>
+          </div>
+          <div class="ms-mini-card">
+            <div class="ms-mini-hd">suggested index — projected impact</div>
+            <div class="ms-ba-split">
+              <div class="ms-ba-col">
+                <div class="ms-ba-label" style="color:var(--ms-danger);">now (COLLSCAN)</div>
+                <div class="ms-ba-plan">
+                  <div class="ms-ba-row">
+                    <span class="ms-ba-name">COLLSCAN</span>
+                    <div class="ms-ba-bar" style="width:80%; background:var(--ms-danger);"></div>
+                    <span class="ms-ba-ms">247ms</span>
+                  </div>
+                  <div class="ms-ba-row">
+                    <span class="ms-ba-name">SORT</span>
+                    <div class="ms-ba-bar" style="width:8%; background:var(--ms-warn);"></div>
+                    <span class="ms-ba-ms">16ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="ms-ba-col">
+                <div class="ms-ba-label" style="color:var(--ms-accent);">with index (IXSCAN)</div>
+                <div class="ms-ba-plan">
+                  <div class="ms-ba-row">
+                    <span class="ms-ba-name">IXSCAN</span>
+                    <div class="ms-ba-bar" style="width:12%; background:var(--ms-accent);"></div>
+                    <span class="ms-ba-ms">~1ms</span>
+                  </div>
+                  <div class="ms-ba-row">
+                    <span class="ms-ba-name">FETCH</span>
+                    <div class="ms-ba-bar" style="width:8%; background:var(--ms-accent);"></div>
+                    <span class="ms-ba-ms">~3ms</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:8px; display:flex; gap:6px; align-items:center; justify-content:space-between;">
+              <span style="font-size:10px;color:var(--ms-fg-dim2);">db.orders.createIndex({ status: 1 })</span>
+              <div style="display:flex;gap:6px;">
+                <button class="ms-ghost-btn">Copy</button>
+                <button class="ms-ghost-btn primary">▶ Create index</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
