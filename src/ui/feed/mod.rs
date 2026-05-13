@@ -124,7 +124,7 @@ impl FeedState {
     pub fn visible_entries(&self) -> Vec<&QueryEntry> {
         self.entries
             .iter()
-            .filter(|e| self.filter.kind.matches(&e.op) && self.filter.expr.matches(e))
+            .filter(|e| self.filter.matches(e))
             .collect()
     }
 

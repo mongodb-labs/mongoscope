@@ -1,15 +1,62 @@
-use crate::data::model::QueryEntry;
+use std::fmt;
 
-/// Simple filter predicate parsed from a text expression.
-/// Supports: `db:name`, `coll:name`, `app:name`, `slow`, `warn`, bare text.
-#[derive(Debug, Clone, Default)]
-pub struct FilterExpr {
+use super::kind_chips::KindFilter;
+use crate::data::model::{Plan, QueryEntry};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Preset {
+    SlowQueries,
+    CollScanOnly,
+}
+
+impl Preset {
+    pub fn label(self) -> &'static str {
+        match self {
+            Preset::SlowQueries => "slow queries",
+            Preset::CollScanOnly => "COLLSCANs only",
+        }
+    }
+
+    pub fn token(self) -> &'static str {
+        match self {
+            Preset::SlowQueries => "slow",
+            Preset::CollScanOnly => "collscan",
+        }
+    }
+
+    pub fn all() -> &'static [Preset] {
+        &[Preset::SlowQueries, Preset::CollScanOnly]
+    }
+}
+
+impl fmt::Display for Preset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.token())
+    }
+}
+
+/// Typed filter — all filter state as typed fields.
+#[derive(Debug, Clone)]
+pub struct Filter {
     pub db: Option<String>,
     pub coll: Option<String>,
     pub app: Option<String>,
-    pub slow: Option<bool>,
-    pub warn: Option<bool>,
+    pub kind: KindFilter,
+    pub preset: Option<Preset>,
     pub text: Option<String>,
+}
+
+impl Default for Filter {
+    fn default() -> Self {
+        Self {
+            db: None,
+            coll: None,
+            app: None,
+            kind: KindFilter::All,
+            preset: None,
+            text: None,
+        }
+    }
 }
 
 fn is_chip_token(token: &str) -> bool {
@@ -18,36 +65,39 @@ fn is_chip_token(token: &str) -> bool {
         || token.starts_with("app:")
         || token == "slow"
         || token == "slow:true"
-        || token == "warn"
-        || token == "warn:true"
+        || token == "collscan"
+        || token == "collscan:true"
 }
 
-impl FilterExpr {
+impl Filter {
     pub fn parse(input: &str) -> Self {
-        let mut expr = FilterExpr::default();
+        let mut f = Filter::default();
         for token in input.split_whitespace() {
             if let Some(val) = token.strip_prefix("db:") {
-                expr.db = Some(val.to_lowercase());
+                f.db = Some(val.to_lowercase());
             } else if let Some(val) = token.strip_prefix("coll:") {
-                expr.coll = Some(val.to_lowercase());
+                f.coll = Some(val.to_lowercase());
             } else if let Some(val) = token.strip_prefix("app:") {
-                expr.app = Some(val.to_lowercase());
-            } else if token == "slow:true" || token == "slow" {
-                expr.slow = Some(true);
-            } else if token == "warn:true" || token == "warn" {
-                expr.warn = Some(true);
+                f.app = Some(val.to_lowercase());
+            } else if token == "slow" || token == "slow:true" {
+                f.preset = Some(Preset::SlowQueries);
+            } else if token == "collscan" || token == "collscan:true" {
+                f.preset = Some(Preset::CollScanOnly);
             } else if !token.is_empty() {
                 let t = token.to_lowercase();
-                expr.text = Some(match expr.text.take() {
+                f.text = Some(match f.text.take() {
                     None => t,
                     Some(existing) => format!("{} {}", existing, t),
                 });
             }
         }
-        expr
+        f
     }
 
     pub fn matches(&self, entry: &QueryEntry) -> bool {
+        if !self.kind.matches(&entry.op) {
+            return false;
+        }
         if let Some(db) = &self.db {
             if !entry.db.as_str().to_lowercase().contains(db.as_str()) {
                 return false;
@@ -63,15 +113,18 @@ impl FilterExpr {
                 return false;
             }
         }
-        if let Some(true) = self.slow {
-            if !entry.slow {
-                return false;
+        match self.preset {
+            Some(Preset::SlowQueries) => {
+                if !entry.slow {
+                    return false;
+                }
             }
-        }
-        if let Some(true) = self.warn {
-            if entry.warn.is_none() {
-                return false;
+            Some(Preset::CollScanOnly) => {
+                if entry.plan != Some(Plan::CollScan) {
+                    return false;
+                }
             }
+            None => {}
         }
         if let Some(text) = &self.text {
             let haystack = format!(
@@ -88,7 +141,6 @@ impl FilterExpr {
         true
     }
 
-    /// Returns the recognized filter tokens from `text` (those that will render as chips).
     pub fn chip_tokens(text: &str) -> Vec<String> {
         text.split_whitespace()
             .filter(|t| is_chip_token(t))
@@ -96,7 +148,6 @@ impl FilterExpr {
             .collect()
     }
 
-    /// Returns the part of `text` that is NOT recognized filter tokens.
     pub fn non_chip_text(text: &str) -> String {
         text.split_whitespace()
             .filter(|t| !is_chip_token(t))
@@ -104,7 +155,6 @@ impl FilterExpr {
             .join(" ")
     }
 
-    /// Returns `text` with the first occurrence of `token` removed.
     pub fn remove_token(text: &str, token: &str) -> String {
         let mut removed = false;
         text.split_whitespace()
@@ -121,13 +171,38 @@ impl FilterExpr {
     }
 }
 
+impl fmt::Display for Filter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut parts: Vec<String> = Vec::new();
+        if let Some(db) = &self.db {
+            parts.push(format!("db:{}", db));
+        }
+        if let Some(coll) = &self.coll {
+            parts.push(format!("coll:{}", coll));
+        }
+        if let Some(app) = &self.app {
+            parts.push(format!("app:{}", app));
+        }
+        if let Some(preset) = self.preset {
+            parts.push(preset.to_string());
+        }
+        if let Some(text) = &self.text {
+            parts.push(text.clone());
+        }
+        write!(f, "{}", parts.join(" "))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::{model::Op, types::*};
+    use crate::data::{
+        model::{Op, Plan},
+        types::*,
+    };
 
-    fn entry(db: &str, coll: &str) -> crate::data::model::QueryEntry {
-        crate::data::model::QueryEntry {
+    fn entry(db: &str, coll: &str) -> QueryEntry {
+        QueryEntry {
             id: QueryId::try_new(1).unwrap(),
             t_ms: TimestampMs::new(0),
             latency_ms: LatencyMs::new(1),
@@ -148,55 +223,107 @@ mod tests {
         }
     }
 
+    fn slow_entry() -> QueryEntry {
+        QueryEntry {
+            slow: true,
+            ..entry("shop", "orders")
+        }
+    }
+
+    fn collscan_entry() -> QueryEntry {
+        QueryEntry {
+            plan: Some(Plan::CollScan),
+            ..entry("shop", "orders")
+        }
+    }
+
     #[test]
     fn parse_db_token() {
-        let expr = FilterExpr::parse("db:shop");
-        assert_eq!(expr.db, Some("shop".into()));
+        let f = Filter::parse("db:shop");
+        assert_eq!(f.db, Some("shop".into()));
+    }
+
+    #[test]
+    fn parse_coll_token() {
+        let f = Filter::parse("coll:orders");
+        assert_eq!(f.coll, Some("orders".into()));
+    }
+
+    #[test]
+    fn parse_app_token() {
+        let f = Filter::parse("app:api");
+        assert_eq!(f.app, Some("api".into()));
+    }
+
+    #[test]
+    fn parse_slow_sets_preset() {
+        let f = Filter::parse("slow");
+        assert_eq!(f.preset, Some(Preset::SlowQueries));
+    }
+
+    #[test]
+    fn parse_collscan_sets_preset() {
+        let f = Filter::parse("collscan");
+        assert_eq!(f.preset, Some(Preset::CollScanOnly));
+    }
+
+    #[test]
+    fn parse_bare_text_goes_to_text_field() {
+        let f = Filter::parse("foo bar");
+        assert_eq!(f.text, Some("foo bar".into()));
+    }
+
+    #[test]
+    fn display_round_trips() {
+        let mut f = Filter::default();
+        f.db = Some("shop".into());
+        f.coll = Some("orders".into());
+        f.preset = Some(Preset::SlowQueries);
+        assert_eq!(f.to_string(), "db:shop coll:orders slow");
     }
 
     #[test]
     fn matches_db_filter() {
-        let expr = FilterExpr::parse("db:shop");
-        assert!(expr.matches(&entry("shop", "orders")));
-        assert!(!expr.matches(&entry("analytics", "pageviews")));
+        let f = Filter::parse("db:shop");
+        assert!(f.matches(&entry("shop", "orders")));
+        assert!(!f.matches(&entry("analytics", "pageviews")));
+    }
+
+    #[test]
+    fn matches_slow_preset() {
+        let f = Filter::parse("slow");
+        assert!(f.matches(&slow_entry()));
+        assert!(!f.matches(&entry("shop", "orders")));
+    }
+
+    #[test]
+    fn matches_collscan_preset() {
+        let f = Filter::parse("collscan");
+        assert!(f.matches(&collscan_entry()));
+        assert!(!f.matches(&entry("shop", "orders")));
     }
 
     #[test]
     fn chip_tokens_extracts_known_prefixes() {
-        let chips = FilterExpr::chip_tokens("db:shop coll:orders foo");
+        let chips = Filter::chip_tokens("db:shop coll:orders foo");
         assert_eq!(chips, vec!["db:shop", "coll:orders"]);
     }
 
     #[test]
+    fn chip_tokens_includes_collscan_not_warn() {
+        let chips = Filter::chip_tokens("slow collscan warn app:api");
+        assert_eq!(chips, vec!["slow", "collscan", "app:api"]);
+    }
+
+    #[test]
     fn non_chip_text_returns_remainder() {
-        let rem = FilterExpr::non_chip_text("db:shop coll:orders foo bar");
+        let rem = Filter::non_chip_text("db:shop coll:orders foo bar");
         assert_eq!(rem, "foo bar");
     }
 
     #[test]
     fn remove_token_removes_first_match() {
-        let result = FilterExpr::remove_token("db:shop coll:orders foo", "coll:orders");
+        let result = Filter::remove_token("db:shop coll:orders foo", "coll:orders");
         assert_eq!(result, "db:shop foo");
-    }
-
-    #[test]
-    fn chip_tokens_slow_warn() {
-        let chips = FilterExpr::chip_tokens("slow warn app:api");
-        assert_eq!(chips, vec!["slow", "warn", "app:api"]);
-    }
-
-    #[test]
-    fn parse_accumulates_bare_text() {
-        let expr = FilterExpr::parse("foo bar");
-        assert_eq!(expr.text, Some("foo bar".into()));
-    }
-
-    #[test]
-    fn parse_bare_text_matches_haystack() {
-        let expr = FilterExpr::parse("foo bar");
-        // "foo bar" is the text filter; haystack is "foo bar testapp"
-        assert!(expr.matches(&entry("foo", "bar")));
-        // "shop baz testapp" doesn't contain "foo bar" as substring
-        assert!(!expr.matches(&entry("shop", "baz")));
     }
 }
