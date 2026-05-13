@@ -262,18 +262,22 @@ impl App {
                 Task::none()
             }
             Message::InspectorResizeStart => {
-                if let InspectorPanel::Open { drag_start, .. } = &mut self.inspector_panel {
-                    *drag_start = None; // will be set on first move
+                // Set drag_start to Some so the subscription activates immediately.
+                // NAN y is a sentinel meaning "first CursorMoved not yet seen".
+                if let InspectorPanel::Open { height, drag_start } = &mut self.inspector_panel {
+                    *drag_start = Some((f32::NAN, *height));
                 }
                 Task::none()
             }
             Message::InspectorResizeMove(y) => {
                 if let InspectorPanel::Open { height, drag_start } = &mut self.inspector_panel {
                     if let Some((start_y, start_h)) = drag_start {
-                        *height = (*start_h + (*start_y - y)).clamp(120.0, 600.0);
-                    } else {
-                        // First move: record start
-                        *drag_start = Some((y, *height));
+                        if start_y.is_nan() {
+                            // First move after ResizeStart: record baseline.
+                            *drag_start = Some((y, *start_h));
+                        } else {
+                            *height = (*start_h + (*start_y - y)).clamp(120.0, 600.0);
+                        }
                     }
                 }
                 Task::none()
