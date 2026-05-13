@@ -11,7 +11,7 @@ Four improvements to the inspector panel:
 
 1. Hide inspector until an entry is selected
 2. Wire the close (✕) button
-3. Replace the inert `"◉"` button with nothing; wire `"↗"/"↙"` as maximize/restore
+3. Remove the `"◉"` button; wire `"↗"/"↙"` as maximize/restore
 4. Add a vertical drag handle to resize the inspector (like the sidebar)
 
 All wiring is mock-compatible — no real backend changes needed.
