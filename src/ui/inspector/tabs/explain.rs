@@ -251,18 +251,21 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let tok_num = palette.tok_num;
     let index_applied = state.index_applied;
 
-    let sugg_content: Element<'static, Msg> = if is_bad {
-        let warn = palette.warn;
-        // ── Before ms values (from explain_stages mock)
-        let collscan_ms = (total_ms as f32 * 0.92) as u32;
-        let sort_ms = (total_ms as f32 * 0.06) as u32;
-        let limit_before_ms: u32 = 1;
+    use crate::data::model::Suggestion;
 
-        // ── After ms values (fractions of total, matching before-plan stage ratios)
-        let ixscan_ms: u32 = (total_ms as f32 * 0.35) as u32;
-        let fetch_ms: u32 = (total_ms as f32 * 0.45) as u32;
-        let sort_after_ms: u32 = (total_ms as f32 * 0.15) as u32;
-        let limit_after_ms: u32 = total_ms.saturating_sub(ixscan_ms + fetch_ms + sort_after_ms);
+    let suggestion_els: Vec<Element<'static, Msg>> = entry
+        .suggestions
+        .iter()
+        .filter_map(|suggestion| {
+            let Suggestion::CreateIndex(s) = suggestion;
+            let warn = palette.warn;
+            let collscan_ms = (total_ms as f32 * 0.92) as u32;
+            let sort_ms = (total_ms as f32 * 0.06) as u32;
+            let limit_before_ms: u32 = 1;
+            let ixscan_ms = s.ixscan_ms;
+            let fetch_ms = s.fetch_ms;
+            let sort_after_ms = s.sort_ms;
+            let limit_after_ms = s.limit_ms;
 
         // bar color for before column: dimmed if index applied
         let before_bar_color = Color {
@@ -680,12 +683,6 @@ pub fn explain_tab<Msg: Clone + 'static>(
         };
 
         let mut sugg_col: Vec<Element<'static, Msg>> = vec![
-            text("SUGGESTIONS")
-                .size(9)
-                .color(fg_dim2)
-                .font(iced::Font::MONOSPACE)
-                .into(),
-            iced::widget::Space::new(0, 6).into(),
             // Before/after split
             row![before_col, after_col].spacing(8).into(),
         ];
@@ -713,8 +710,11 @@ pub fn explain_tab<Msg: Clone + 'static>(
         );
         sugg_col.push(code_pill_row);
 
-        column(sugg_col).spacing(6).into()
-    } else {
+        Some(column(sugg_col).spacing(6).into())
+        })
+        .collect();
+
+    let sugg_content: Element<'static, Msg> = if suggestion_els.is_empty() {
         column![
             text("SUGGESTIONS")
                 .size(9)
@@ -736,6 +736,17 @@ pub fn explain_tab<Msg: Clone + 'static>(
                 .font(iced::Font::MONOSPACE),
             ]
             .spacing(10),
+        ]
+        .spacing(6)
+        .into()
+    } else {
+        column![
+            text("SUGGESTIONS")
+                .size(9)
+                .color(fg_dim2)
+                .font(iced::Font::MONOSPACE),
+            iced::widget::Space::new(0, 6),
+            column(suggestion_els).spacing(12),
         ]
         .spacing(6)
         .into()

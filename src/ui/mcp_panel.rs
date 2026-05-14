@@ -362,6 +362,11 @@ pub fn overlay_view<Msg: Clone + 'static>(
             "Select + highlight a row in the feed UI",
             palette
         ),
+        tool_row_el(
+            "get_recommendations",
+            "List all optimization suggestions across captured requests",
+            palette
+        ),
     ]
     .spacing(8);
 
