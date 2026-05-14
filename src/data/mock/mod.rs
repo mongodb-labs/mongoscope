@@ -56,7 +56,7 @@ impl DataSource for MockSource {
                 let is_collscan = matches!(tpl.plan, Some(Plan::CollScan));
                 let examined = tpl.docs_examined.unwrap_or(1) as f32;
                 let returned = tpl.docs_returned.unwrap_or(1) as f32;
-                let selectivity = (returned / examined).max(0.001).min(1.0);
+                let selectivity = (returned / examined).clamp(0.001, 1.0);
 
                 let index_applied = is_collscan
                     && applied_templates

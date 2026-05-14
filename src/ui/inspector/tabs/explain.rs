@@ -256,7 +256,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let suggestion_els: Vec<Element<'static, Msg>> = entry
         .suggestions
         .iter()
-        .filter_map(|suggestion| {
+        .map(|suggestion| {
             let Suggestion::CreateIndex(s) = suggestion;
             let warn = palette.warn;
             let collscan_ms = (total_ms as f32 * 0.92) as u32;
@@ -710,7 +710,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
             );
             sugg_col.push(code_pill_row);
 
-            Some(column(sugg_col).spacing(6).into())
+            column(sugg_col).spacing(6).into()
         })
         .collect();
 
