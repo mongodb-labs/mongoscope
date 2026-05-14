@@ -145,8 +145,22 @@ impl App {
             }
             Message::Feed(m) => {
                 let prev_selected = self.sidebar.active().and_then(|c| c.feed.selected);
+                let is_filter_msg = matches!(m, FeedMsg::Filter(_));
                 if let Some(conn) = self.sidebar.active_mut() {
                     conn.feed.update(m);
+                }
+                if is_filter_msg {
+                    let scope = self.sidebar.active().map(|c| {
+                        let f = &c.feed.filter.filter;
+                        (f.db.clone(), f.coll.clone(), f.app.clone())
+                    });
+                    if let Some((db, coll, app)) = scope {
+                        self.sidebar.sync_scope_from_filter(
+                            db.as_deref(),
+                            coll.as_deref(),
+                            app.as_deref(),
+                        );
+                    }
                 }
                 let new_selected = self.sidebar.active().and_then(|c| c.feed.selected);
                 if new_selected != prev_selected {
