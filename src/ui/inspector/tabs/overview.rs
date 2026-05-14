@@ -65,19 +65,26 @@ pub fn overview_tab<'a, Msg: Clone + 'static>(
     // ── Hero
     let hero = column![
         row![
-            row![
-                op_badge(&entry.op, palette),
-                iced::widget::Space::new(8, 0),
-                text(format!("{}.{}", db, coll))
-                    .size(fs + 1.0)
-                    .color(fg)
+            column![
+                row![
+                    op_badge(&entry.op, palette),
+                    iced::widget::Space::new(8, 0),
+                    text(format!("{}.{}", db, coll))
+                        .size(fs + 1.0)
+                        .color(fg)
+                        .font(iced::Font::MONOSPACE),
+                ]
+                .align_y(iced::Alignment::Center),
+                text("namespace")
+                    .size(9)
+                    .color(fg_dim2)
                     .font(iced::Font::MONOSPACE),
             ]
-            .align_y(iced::Alignment::Center),
+            .spacing(2),
             iced::widget::Space::new(Length::Fill, 0),
             column![
                 text(lat_str.clone())
-                    .size(24)
+                    .size(16)
                     .color(lat_color)
                     .font(iced::Font::MONOSPACE),
                 text("total wall clock")
