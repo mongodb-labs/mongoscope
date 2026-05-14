@@ -143,7 +143,7 @@ impl App {
                         && matches!(self.inspector_panel, InspectorPanel::Closed)
                     {
                         self.inspector_panel = InspectorPanel::Open {
-                            height: 300.0,
+                            height: 475.0,
                             drag_start: None,
                         };
                         // Inspector opening shrinks the feed viewport, which fires a
@@ -294,7 +294,7 @@ impl App {
                             // First move after ResizeStart: record baseline.
                             *drag_start = Some((y, *start_h));
                         } else {
-                            *height = (*start_h + (*start_y - y)).clamp(120.0, 600.0);
+                            *height = (*start_h + (*start_y - y)).clamp(120.0, 900.0);
                         }
                     }
                 }
