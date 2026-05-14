@@ -7,6 +7,7 @@ use crate::data::model::{Plan, QueryEntry};
 pub enum Preset {
     SlowQueries,
     CollScanOnly,
+    WithSuggestions,
 }
 
 impl Preset {
@@ -14,6 +15,7 @@ impl Preset {
         match self {
             Preset::SlowQueries => "slow queries",
             Preset::CollScanOnly => "COLLSCANs only",
+            Preset::WithSuggestions => "with suggestions",
         }
     }
 
@@ -21,11 +23,16 @@ impl Preset {
         match self {
             Preset::SlowQueries => "slow",
             Preset::CollScanOnly => "collscan",
+            Preset::WithSuggestions => "suggestions",
         }
     }
 
     pub fn all() -> &'static [Preset] {
-        &[Preset::SlowQueries, Preset::CollScanOnly]
+        &[
+            Preset::SlowQueries,
+            Preset::CollScanOnly,
+            Preset::WithSuggestions,
+        ]
     }
 }
 
@@ -67,6 +74,8 @@ fn is_chip_token(token: &str) -> bool {
         || token == "slow:true"
         || token == "collscan"
         || token == "collscan:true"
+        || token == "suggestions"
+        || token == "suggestions:true"
 }
 
 impl Filter {
@@ -86,6 +95,10 @@ impl Filter {
             } else if token == "collscan" || token == "collscan:true" {
                 if f.preset.is_none() {
                     f.preset = Some(Preset::CollScanOnly);
+                }
+            } else if token == "suggestions" || token == "suggestions:true" {
+                if f.preset.is_none() {
+                    f.preset = Some(Preset::WithSuggestions);
                 }
             } else if !token.is_empty() {
                 let t = token.to_lowercase();
@@ -120,6 +133,7 @@ impl Filter {
         match self.preset {
             Some(Preset::SlowQueries) if !entry.slow => return false,
             Some(Preset::CollScanOnly) if entry.plan != Some(Plan::CollScan) => return false,
+            Some(Preset::WithSuggestions) if entry.suggestions.is_empty() => return false,
             _ => {}
         }
         if let Some(text) = &self.text {
@@ -221,6 +235,7 @@ mod tests {
             cluster_time: None,
             response_docs: vec![],
             rejected_plan_count: 0,
+            suggestions: vec![],
         }
     }
 

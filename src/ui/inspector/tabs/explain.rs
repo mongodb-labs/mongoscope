@@ -251,470 +251,470 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let tok_num = palette.tok_num;
     let index_applied = state.index_applied;
 
-    let sugg_content: Element<'static, Msg> = if is_bad {
-        let warn = palette.warn;
-        // ── Before ms values (from explain_stages mock)
-        let collscan_ms = (total_ms as f32 * 0.92) as u32;
-        let sort_ms = (total_ms as f32 * 0.06) as u32;
-        let limit_before_ms: u32 = 1;
+    use crate::data::model::Suggestion;
 
-        // ── After ms values (fractions of total, matching before-plan stage ratios)
-        let ixscan_ms: u32 = (total_ms as f32 * 0.35) as u32;
-        let fetch_ms: u32 = (total_ms as f32 * 0.45) as u32;
-        let sort_after_ms: u32 = (total_ms as f32 * 0.15) as u32;
-        let limit_after_ms: u32 = total_ms.saturating_sub(ixscan_ms + fetch_ms + sort_after_ms);
+    let suggestion_els: Vec<Element<'static, Msg>> = entry
+        .suggestions
+        .iter()
+        .map(|suggestion| {
+            let Suggestion::CreateIndex(s) = suggestion;
+            let warn = palette.warn;
+            let collscan_ms = (total_ms as f32 * 0.92) as u32;
+            let sort_ms = (total_ms as f32 * 0.06) as u32;
+            let limit_before_ms: u32 = 1;
+            let ixscan_ms = s.ixscan_ms;
+            let fetch_ms = s.fetch_ms;
+            let sort_after_ms = s.sort_ms;
+            let limit_after_ms = s.limit_ms;
 
-        // bar color for before column: dimmed if index applied
-        let before_bar_color = Color {
-            a: if index_applied { 0.40 } else { 0.7 },
-            ..danger
-        };
-        let before_label_color = Color {
-            a: if index_applied { 0.4 } else { 1.0 },
-            ..fg_dim
-        };
-        let before_max = collscan_ms as f32; // widest in before column
+            // bar color for before column: dimmed if index applied
+            let before_bar_color = Color {
+                a: if index_applied { 0.40 } else { 0.7 },
+                ..danger
+            };
+            let before_label_color = Color {
+                a: if index_applied { 0.4 } else { 1.0 },
+                ..fg_dim
+            };
+            let before_max = collscan_ms as f32; // widest in before column
 
-        // After column styling
-        let after_border_color = if index_applied {
-            Color { a: 0.6, ..ok }
-        } else {
-            border
-        };
-        // blend ok at 8% opacity over bg2 for the applied state
-        let after_bg_color = if index_applied {
-            Color {
-                r: bg2.r * 0.92 + ok.r * 0.08,
-                g: bg2.g * 0.92 + ok.g * 0.08,
-                b: bg2.b * 0.92 + ok.b * 0.08,
-                a: 1.0,
-            }
-        } else {
-            bg2
-        };
-        let after_bar_color = Color { a: 0.8, ..ok };
-        let after_max = [ixscan_ms, fetch_ms, sort_after_ms, limit_after_ms]
-            .iter()
-            .copied()
-            .max()
-            .unwrap_or(1) as f32;
+            // After column styling
+            let after_border_color = if index_applied {
+                Color { a: 0.6, ..ok }
+            } else {
+                border
+            };
+            // blend ok at 8% opacity over bg2 for the applied state
+            let after_bg_color = if index_applied {
+                Color {
+                    r: bg2.r * 0.92 + ok.r * 0.08,
+                    g: bg2.g * 0.92 + ok.g * 0.08,
+                    b: bg2.b * 0.92 + ok.b * 0.08,
+                    a: 1.0,
+                }
+            } else {
+                bg2
+            };
+            let after_bar_color = Color { a: 0.8, ..ok };
+            let after_max = [ixscan_ms, fetch_ms, sort_after_ms, limit_after_ms]
+                .iter()
+                .copied()
+                .max()
+                .unwrap_or(1) as f32;
 
-        // Before column header
-        let before_header_color = Color {
-            a: if index_applied { 0.4 } else { 1.0 },
-            ..fg_dim2
-        };
-        let before_col: Element<'static, Msg> = container(
-            column![
-                text("before")
-                    .size(9)
-                    .color(before_header_color)
-                    .font(iced::Font::MONOSPACE),
-                iced::widget::Space::new(0, 4),
-                plan_bar::<Msg>(
-                    "COLLSCAN",
-                    collscan_ms,
-                    before_max,
-                    before_bar_color,
-                    before_label_color,
-                    fs_small,
-                    bg
-                ),
-                plan_bar::<Msg>(
-                    "FETCH",
-                    0,
-                    before_max,
-                    before_bar_color,
-                    before_label_color,
-                    fs_small,
-                    bg
-                ),
-                plan_bar::<Msg>(
-                    "SORT",
-                    sort_ms,
-                    before_max,
-                    before_bar_color,
-                    before_label_color,
-                    fs_small,
-                    bg
-                ),
-                plan_bar::<Msg>(
-                    "LIMIT",
-                    limit_before_ms,
-                    before_max,
-                    before_bar_color,
-                    before_label_color,
-                    fs_small,
-                    bg
-                ),
-            ]
-            .spacing(4)
-            .width(Length::Fill),
-        )
-        .width(Length::Fill)
-        .padding(Padding {
-            top: 8.0,
-            bottom: 8.0,
-            left: 8.0,
-            right: 8.0,
-        })
-        .style(move |_| container::Style {
-            background: Some(iced::Background::Color(bg2)),
-            border: Border {
-                color: border,
-                width: 1.0,
-                radius: 4.0.into(),
-            },
-            ..Default::default()
-        })
-        .into();
-
-        // After column header
-        let after_header_color = if index_applied { ok } else { fg_dim2 };
-        let est_badge_bg = Color { a: 0.15, ..warn };
-        let est_badge_border = Color { a: 0.30, ..warn };
-        let after_header: Element<'static, Msg> = if index_applied {
-            let est_badge: Element<'static, Msg> =
-                container(text("EST.").size(9).color(warn).font(iced::Font::MONOSPACE))
-                    .padding(Padding {
-                        top: 1.0,
-                        bottom: 1.0,
-                        left: 4.0,
-                        right: 4.0,
-                    })
-                    .style(move |_| container::Style {
-                        background: Some(iced::Background::Color(est_badge_bg)),
-                        border: Border {
-                            color: est_badge_border,
-                            width: 1.0,
-                            radius: 3.0.into(),
-                        },
-                        ..Default::default()
-                    })
-                    .into();
-            row![
-                text("✓ index applied")
-                    .size(9)
-                    .color(after_header_color)
-                    .font(iced::Font::MONOSPACE),
-                est_badge,
-            ]
-            .spacing(4)
-            .align_y(iced::Alignment::Center)
-            .into()
-        } else {
-            text("after (est.)")
-                .size(9)
-                .color(after_header_color)
-                .font(iced::Font::MONOSPACE)
-                .into()
-        };
-        let after_col: Element<'static, Msg> = container(
-            column![
-                after_header,
-                iced::widget::Space::new(0, 4),
-                plan_bar::<Msg>(
-                    "IXSCAN",
-                    ixscan_ms,
-                    after_max,
-                    after_bar_color,
-                    fg_dim,
-                    fs_small,
-                    bg
-                ),
-                plan_bar::<Msg>(
-                    "FETCH",
-                    fetch_ms,
-                    after_max,
-                    after_bar_color,
-                    fg_dim,
-                    fs_small,
-                    bg
-                ),
-                plan_bar::<Msg>(
-                    "SORT",
-                    sort_after_ms,
-                    after_max,
-                    after_bar_color,
-                    fg_dim,
-                    fs_small,
-                    bg
-                ),
-                plan_bar::<Msg>(
-                    "LIMIT",
-                    limit_after_ms,
-                    after_max,
-                    after_bar_color,
-                    fg_dim,
-                    fs_small,
-                    bg
-                ),
-            ]
-            .spacing(4)
-            .width(Length::Fill),
-        )
-        .width(Length::Fill)
-        .padding(Padding {
-            top: 8.0,
-            bottom: 8.0,
-            left: 8.0,
-            right: 8.0,
-        })
-        .style(move |_| container::Style {
-            background: Some(iced::Background::Color(after_bg_color)),
-            border: Border {
-                color: after_border_color,
-                width: 1.0,
-                radius: 4.0.into(),
-            },
-            ..Default::default()
-        })
-        .into();
-
-        // ── Code pill: single unified pill, segments separated by 1px dividers
-        // Pre-blend colors to avoid alpha compositing issues
-        let index_seg_bg = Color {
-            r: bg2.r * 0.88 + accent.r * 0.12,
-            g: bg2.g * 0.88 + accent.g * 0.12,
-            b: bg2.b * 0.88 + accent.b * 0.12,
-            a: 1.0,
-        };
-        let run_label = if index_applied {
-            "✓ Created"
-        } else {
-            "▶ Run"
-        };
-        let run_seg_bg = if index_applied {
-            Color {
-                r: bg2.r * 0.85 + accent.r * 0.15,
-                g: bg2.g * 0.85 + accent.g * 0.15,
-                b: bg2.b * 0.85 + accent.b * 0.15,
-                a: 1.0,
-            }
-        } else {
-            bg2
-        };
-        let run_fg = if index_applied { accent } else { fg_dim };
-        let run_border_color = if index_applied {
-            Color { a: 0.5, ..accent }
-        } else {
-            border2
-        };
-
-        // 1px vertical separator spanning pill height
-        let vsep = |c: Color| -> Element<'static, Msg> {
-            container(iced::widget::Space::new(0, 0))
-                .width(1)
-                .height(Length::Fill)
-                .style(move |_| container::Style {
-                    background: Some(iced::Background::Color(c)),
-                    ..Default::default()
-                })
-                .into()
-        };
-
-        // Left segment: "index" label with accent-tinted bg, left corners rounded
-        let index_segment: Element<'static, Msg> = container(
-            text("index")
-                .size(9)
-                .color(accent)
-                .font(iced::Font::MONOSPACE),
-        )
-        .center_y(Length::Fill)
-        .padding(Padding {
-            top: 0.0,
-            bottom: 0.0,
-            left: 10.0,
-            right: 10.0,
-        })
-        .height(Length::Fill)
-        .style(move |_| container::Style {
-            background: Some(iced::Background::Color(index_seg_bg)),
-            border: Border {
-                radius: iced::border::Radius {
-                    top_left: 4.0,
-                    bottom_left: 4.0,
-                    top_right: 0.0,
-                    bottom_right: 0.0,
+            // Before column header
+            let before_header_color = Color {
+                a: if index_applied { 0.4 } else { 1.0 },
+                ..fg_dim2
+            };
+            let before_col: Element<'static, Msg> = container(
+                column![
+                    text("before")
+                        .size(9)
+                        .color(before_header_color)
+                        .font(iced::Font::MONOSPACE),
+                    iced::widget::Space::new(0, 4),
+                    plan_bar::<Msg>(
+                        "COLLSCAN",
+                        collscan_ms,
+                        before_max,
+                        before_bar_color,
+                        before_label_color,
+                        fs_small,
+                        bg
+                    ),
+                    plan_bar::<Msg>(
+                        "FETCH",
+                        0,
+                        before_max,
+                        before_bar_color,
+                        before_label_color,
+                        fs_small,
+                        bg
+                    ),
+                    plan_bar::<Msg>(
+                        "SORT",
+                        sort_ms,
+                        before_max,
+                        before_bar_color,
+                        before_label_color,
+                        fs_small,
+                        bg
+                    ),
+                    plan_bar::<Msg>(
+                        "LIMIT",
+                        limit_before_ms,
+                        before_max,
+                        before_bar_color,
+                        before_label_color,
+                        fs_small,
+                        bg
+                    ),
+                ]
+                .spacing(4)
+                .width(Length::Fill),
+            )
+            .width(Length::Fill)
+            .padding(Padding {
+                top: 8.0,
+                bottom: 8.0,
+                left: 8.0,
+                right: 8.0,
+            })
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(bg2)),
+                border: Border {
+                    color: border,
+                    width: 1.0,
+                    radius: 4.0.into(),
                 },
                 ..Default::default()
-            },
-            ..Default::default()
-        })
-        .into();
+            })
+            .into();
 
-        // Middle segment: syntax-highlighted createIndex command
-        let code_segment: Element<'static, Msg> = container(
-            row![
-                text("db.")
+            // After column header
+            let after_header_color = if index_applied { ok } else { fg_dim2 };
+            let est_badge_bg = Color { a: 0.15, ..warn };
+            let est_badge_border = Color { a: 0.30, ..warn };
+            let after_header: Element<'static, Msg> = if index_applied {
+                let est_badge: Element<'static, Msg> =
+                    container(text("EST.").size(9).color(warn).font(iced::Font::MONOSPACE))
+                        .padding(Padding {
+                            top: 1.0,
+                            bottom: 1.0,
+                            left: 4.0,
+                            right: 4.0,
+                        })
+                        .style(move |_| container::Style {
+                            background: Some(iced::Background::Color(est_badge_bg)),
+                            border: Border {
+                                color: est_badge_border,
+                                width: 1.0,
+                                radius: 3.0.into(),
+                            },
+                            ..Default::default()
+                        })
+                        .into();
+                row![
+                    text("✓ index applied")
+                        .size(9)
+                        .color(after_header_color)
+                        .font(iced::Font::MONOSPACE),
+                    est_badge,
+                ]
+                .spacing(4)
+                .align_y(iced::Alignment::Center)
+                .into()
+            } else {
+                text("after (est.)")
+                    .size(9)
+                    .color(after_header_color)
+                    .font(iced::Font::MONOSPACE)
+                    .into()
+            };
+            let after_col: Element<'static, Msg> = container(
+                column![
+                    after_header,
+                    iced::widget::Space::new(0, 4),
+                    plan_bar::<Msg>(
+                        "IXSCAN",
+                        ixscan_ms,
+                        after_max,
+                        after_bar_color,
+                        fg_dim,
+                        fs_small,
+                        bg
+                    ),
+                    plan_bar::<Msg>(
+                        "FETCH",
+                        fetch_ms,
+                        after_max,
+                        after_bar_color,
+                        fg_dim,
+                        fs_small,
+                        bg
+                    ),
+                    plan_bar::<Msg>(
+                        "SORT",
+                        sort_after_ms,
+                        after_max,
+                        after_bar_color,
+                        fg_dim,
+                        fs_small,
+                        bg
+                    ),
+                    plan_bar::<Msg>(
+                        "LIMIT",
+                        limit_after_ms,
+                        after_max,
+                        after_bar_color,
+                        fg_dim,
+                        fs_small,
+                        bg
+                    ),
+                ]
+                .spacing(4)
+                .width(Length::Fill),
+            )
+            .width(Length::Fill)
+            .padding(Padding {
+                top: 8.0,
+                bottom: 8.0,
+                left: 8.0,
+                right: 8.0,
+            })
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(after_bg_color)),
+                border: Border {
+                    color: after_border_color,
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                ..Default::default()
+            })
+            .into();
+
+            // ── Code pill: single unified pill, segments separated by 1px dividers
+            // Pre-blend colors to avoid alpha compositing issues
+            let index_seg_bg = Color {
+                r: bg2.r * 0.88 + accent.r * 0.12,
+                g: bg2.g * 0.88 + accent.g * 0.12,
+                b: bg2.b * 0.88 + accent.b * 0.12,
+                a: 1.0,
+            };
+            let run_label = if index_applied {
+                "✓ Created"
+            } else {
+                "▶ Run"
+            };
+            let run_seg_bg = if index_applied {
+                Color {
+                    r: bg2.r * 0.85 + accent.r * 0.15,
+                    g: bg2.g * 0.85 + accent.g * 0.15,
+                    b: bg2.b * 0.85 + accent.b * 0.15,
+                    a: 1.0,
+                }
+            } else {
+                bg2
+            };
+            let run_fg = if index_applied { accent } else { fg_dim };
+            let run_border_color = if index_applied {
+                Color { a: 0.5, ..accent }
+            } else {
+                border2
+            };
+
+            // 1px vertical separator spanning pill height
+            let vsep = |c: Color| -> Element<'static, Msg> {
+                container(iced::widget::Space::new(0, 0))
+                    .width(1)
+                    .height(Length::Fill)
+                    .style(move |_| container::Style {
+                        background: Some(iced::Background::Color(c)),
+                        ..Default::default()
+                    })
+                    .into()
+            };
+
+            // Left segment: "index" label with accent-tinted bg, left corners rounded
+            let index_segment: Element<'static, Msg> = container(
+                text("index")
+                    .size(9)
+                    .color(accent)
+                    .font(iced::Font::MONOSPACE),
+            )
+            .center_y(Length::Fill)
+            .padding(Padding {
+                top: 0.0,
+                bottom: 0.0,
+                left: 10.0,
+                right: 10.0,
+            })
+            .height(Length::Fill)
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(index_seg_bg)),
+                border: Border {
+                    radius: iced::border::Radius {
+                        top_left: 4.0,
+                        bottom_left: 4.0,
+                        top_right: 0.0,
+                        bottom_right: 0.0,
+                    },
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .into();
+
+            // Middle segment: syntax-highlighted createIndex command
+            let code_segment: Element<'static, Msg> = container(
+                row![
+                    text("db.")
+                        .size(fs_small)
+                        .color(fg_dim)
+                        .font(iced::Font::MONOSPACE),
+                    text(coll.clone())
+                        .size(fs_small)
+                        .color(fg)
+                        .font(iced::Font::MONOSPACE),
+                    text(".createIndex")
+                        .size(fs_small)
+                        .color(tok_call)
+                        .font(iced::Font::MONOSPACE),
+                    text("({ ")
+                        .size(fs_small)
+                        .color(fg)
+                        .font(iced::Font::MONOSPACE),
+                    text(format!("\"{}\"", first_key.clone()))
+                        .size(fs_small)
+                        .color(tok_str)
+                        .font(iced::Font::MONOSPACE),
+                    text(": ")
+                        .size(fs_small)
+                        .color(fg)
+                        .font(iced::Font::MONOSPACE),
+                    text("1")
+                        .size(fs_small)
+                        .color(tok_num)
+                        .font(iced::Font::MONOSPACE),
+                    text(" })")
+                        .size(fs_small)
+                        .color(fg)
+                        .font(iced::Font::MONOSPACE),
+                ]
+                .spacing(0)
+                .align_y(iced::Alignment::Center),
+            )
+            .center_y(Length::Fill)
+            .padding(Padding {
+                top: 0.0,
+                bottom: 0.0,
+                left: 12.0,
+                right: 12.0,
+            })
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into();
+
+            // Copy button segment
+            let copy_btn: Element<'static, Msg> = button(
+                text("Copy")
                     .size(fs_small)
                     .color(fg_dim)
                     .font(iced::Font::MONOSPACE),
-                text(coll.clone())
-                    .size(fs_small)
-                    .color(fg)
-                    .font(iced::Font::MONOSPACE),
-                text(".createIndex")
-                    .size(fs_small)
-                    .color(tok_call)
-                    .font(iced::Font::MONOSPACE),
-                text("({ ")
-                    .size(fs_small)
-                    .color(fg)
-                    .font(iced::Font::MONOSPACE),
-                text(format!("\"{}\"", first_key.clone()))
-                    .size(fs_small)
-                    .color(tok_str)
-                    .font(iced::Font::MONOSPACE),
-                text(": ")
-                    .size(fs_small)
-                    .color(fg)
-                    .font(iced::Font::MONOSPACE),
-                text("1")
-                    .size(fs_small)
-                    .color(tok_num)
-                    .font(iced::Font::MONOSPACE),
-                text(" })")
-                    .size(fs_small)
-                    .color(fg)
-                    .font(iced::Font::MONOSPACE),
-            ]
-            .spacing(0)
-            .align_y(iced::Alignment::Center),
-        )
-        .center_y(Length::Fill)
-        .padding(Padding {
-            top: 0.0,
-            bottom: 0.0,
-            left: 12.0,
-            right: 12.0,
-        })
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .into();
+            )
+            .padding(Padding {
+                top: 7.0,
+                bottom: 7.0,
+                left: 12.0,
+                right: 12.0,
+            })
+            .on_press(on_msg(ExplainMsg::CopyIndex))
+            .style(move |_, _| button::Style {
+                background: Some(iced::Background::Color(bg2)),
+                text_color: fg_dim,
+                ..Default::default()
+            })
+            .into();
 
-        // Copy button segment
-        let copy_btn: Element<'static, Msg> = button(
-            text("Copy")
-                .size(fs_small)
-                .color(fg_dim)
-                .font(iced::Font::MONOSPACE),
-        )
-        .padding(Padding {
-            top: 7.0,
-            bottom: 7.0,
-            left: 12.0,
-            right: 12.0,
-        })
-        .on_press(on_msg(ExplainMsg::CopyIndex))
-        .style(move |_, _| button::Style {
-            background: Some(iced::Background::Color(bg2)),
-            text_color: fg_dim,
-            ..Default::default()
-        })
-        .into();
+            // Run button segment (right corners rounded to match outer pill)
+            let run_btn: Element<'static, Msg> = button(
+                text(run_label)
+                    .size(fs_small)
+                    .color(run_fg)
+                    .font(iced::Font::MONOSPACE),
+            )
+            .padding(Padding {
+                top: 7.0,
+                bottom: 7.0,
+                left: 12.0,
+                right: 12.0,
+            })
+            .on_press_maybe(if index_applied {
+                None
+            } else {
+                Some(on_msg(ExplainMsg::RunIndex))
+            })
+            .style(move |_, _| button::Style {
+                background: Some(iced::Background::Color(run_seg_bg)),
+                border: Border {
+                    radius: iced::border::Radius {
+                        top_left: 0.0,
+                        bottom_left: 0.0,
+                        top_right: 4.0,
+                        bottom_right: 4.0,
+                    },
+                    ..Default::default()
+                },
+                text_color: run_fg,
+                ..Default::default()
+            })
+            .into();
 
-        // Run button segment (right corners rounded to match outer pill)
-        let run_btn: Element<'static, Msg> = button(
-            text(run_label)
-                .size(fs_small)
-                .color(run_fg)
-                .font(iced::Font::MONOSPACE),
-        )
-        .padding(Padding {
-            top: 7.0,
-            bottom: 7.0,
-            left: 12.0,
-            right: 12.0,
-        })
-        .on_press_maybe(if index_applied {
-            None
-        } else {
-            Some(on_msg(ExplainMsg::RunIndex))
-        })
-        .style(move |_, _| button::Style {
-            background: Some(iced::Background::Color(run_seg_bg)),
-            border: Border {
-                radius: iced::border::Radius {
-                    top_left: 0.0,
-                    bottom_left: 0.0,
-                    top_right: 4.0,
-                    bottom_right: 4.0,
+            // Outer unified pill wrapper
+            let code_pill_row: Element<'static, Msg> = container(
+                row![
+                    index_segment,
+                    vsep(border2),
+                    code_segment,
+                    vsep(border2),
+                    copy_btn,
+                    vsep(run_border_color),
+                    run_btn,
+                ]
+                .spacing(0)
+                .align_y(iced::Alignment::Center)
+                .height(30),
+            )
+            .style(move |_| container::Style {
+                background: Some(iced::Background::Color(bg2)),
+                border: Border {
+                    color: border2,
+                    width: 1.0,
+                    radius: 5.0.into(),
                 },
                 ..Default::default()
-            },
-            text_color: run_fg,
-            ..Default::default()
-        })
-        .into();
+            })
+            .into();
 
-        // Outer unified pill wrapper
-        let code_pill_row: Element<'static, Msg> = container(
-            row![
-                index_segment,
-                vsep(border2),
-                code_segment,
-                vsep(border2),
-                copy_btn,
-                vsep(run_border_color),
-                run_btn,
-            ]
-            .spacing(0)
-            .align_y(iced::Alignment::Center)
-            .height(30),
-        )
-        .style(move |_| container::Style {
-            background: Some(iced::Background::Color(bg2)),
-            border: Border {
-                color: border2,
-                width: 1.0,
-                radius: 5.0.into(),
-            },
-            ..Default::default()
-        })
-        .into();
+            let italic_font = iced::Font {
+                style: iced::font::Style::Italic,
+                ..iced::Font::MONOSPACE
+            };
 
-        let italic_font = iced::Font {
-            style: iced::font::Style::Italic,
-            ..iced::Font::MONOSPACE
-        };
+            let mut sugg_col: Vec<Element<'static, Msg>> = vec![
+                // Before/after split
+                row![before_col, after_col].spacing(8).into(),
+            ];
 
-        let mut sugg_col: Vec<Element<'static, Msg>> = vec![
-            text("SUGGESTIONS")
-                .size(9)
-                .color(fg_dim2)
-                .font(iced::Font::MONOSPACE)
-                .into(),
-            iced::widget::Space::new(0, 6).into(),
-            // Before/after split
-            row![before_col, after_col].spacing(8).into(),
-        ];
+            if index_applied {
+                sugg_col.push(
+                    text("actual speedup depends on data distribution")
+                        .size(9)
+                        .color(fg_dim2)
+                        .font(italic_font)
+                        .into(),
+                );
+            }
 
-        if index_applied {
             sugg_col.push(
-                text("actual speedup depends on data distribution")
-                    .size(9)
-                    .color(fg_dim2)
-                    .font(italic_font)
+                // Separator
+                container(iced::widget::Space::new(Length::Fill, 0))
+                    .height(1)
+                    .width(Length::Fill)
+                    .style(move |_| container::Style {
+                        background: Some(iced::Background::Color(border2)),
+                        ..Default::default()
+                    })
                     .into(),
             );
-        }
+            sugg_col.push(code_pill_row);
 
-        sugg_col.push(
-            // Separator
-            container(iced::widget::Space::new(Length::Fill, 0))
-                .height(1)
-                .width(Length::Fill)
-                .style(move |_| container::Style {
-                    background: Some(iced::Background::Color(border2)),
-                    ..Default::default()
-                })
-                .into(),
-        );
-        sugg_col.push(code_pill_row);
+            column(sugg_col).spacing(6).into()
+        })
+        .collect();
 
-        column(sugg_col).spacing(6).into()
-    } else {
+    let sugg_content: Element<'static, Msg> = if suggestion_els.is_empty() {
         column![
             text("SUGGESTIONS")
                 .size(9)
@@ -736,6 +736,17 @@ pub fn explain_tab<Msg: Clone + 'static>(
                 .font(iced::Font::MONOSPACE),
             ]
             .spacing(10),
+        ]
+        .spacing(6)
+        .into()
+    } else {
+        column![
+            text("SUGGESTIONS")
+                .size(9)
+                .color(fg_dim2)
+                .font(iced::Font::MONOSPACE),
+            iced::widget::Space::new(0, 6),
+            column(suggestion_els).spacing(12),
         ]
         .spacing(6)
         .into()

@@ -2,12 +2,18 @@ mod data;
 mod theme;
 mod ui;
 
-use data::{mock::MockSource, model::QueryEntry, source::DataSource};
+use data::{
+    mock::{all_templates, MockSource},
+    model::QueryEntry,
+    source::DataSource,
+};
 use iced::{
     mouse,
     widget::{column, container, mouse_area, row, scrollable, stack},
     Element, Length, Subscription, Task,
 };
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use theme::{Density, Theme};
 use ui::{
@@ -45,6 +51,8 @@ enum Message {
     ToggleTheme,
     ToggleDensity,
     ToggleCapture,
+    StartMockCapture,
+    StopMockCapture,
     // TODO: remove when real backend is wired up — currently all mock data
     #[allow(dead_code)]
     Menu(MenuMsg),
@@ -67,6 +75,8 @@ struct App {
     sidebar_dragging: bool,
     inspector_panel: InspectorPanel,
     mcp_panel: McpPanelState,
+    mock_running: bool,
+    applied_templates: Arc<Mutex<HashSet<usize>>>,
 }
 
 impl App {
@@ -80,6 +90,8 @@ impl App {
             sidebar_dragging: false,
             inspector_panel: InspectorPanel::default(),
             mcp_panel: McpPanelState::new(),
+            mock_running: false,
+            applied_templates: Arc::new(Mutex::new(HashSet::new())),
         };
         if app.sidebar.connections.is_empty() {
             app.sidebar.dialog = Some(ui::dialog::ConnectionDialogState::new());
@@ -172,6 +184,21 @@ impl App {
                 };
                 Task::none()
             }
+            Message::Inspector(InspectorMsg::Explain(ExplainMsg::RunIndex)) => {
+                self.inspector.explain.index_applied = true;
+                if let Some(entry) = self.sidebar.active().and_then(|c| {
+                    c.feed
+                        .selected
+                        .and_then(|id| c.feed.entries.iter().find(|e| e.id == id))
+                }) {
+                    let num_templates = all_templates().len();
+                    let tpl_idx = entry.id.into_inner() as usize % num_templates;
+                    if let Ok(mut set) = self.applied_templates.lock() {
+                        set.insert(tpl_idx);
+                    }
+                }
+                Task::none()
+            }
             Message::Inspector(InspectorMsg::Explain(ExplainMsg::CopyIndex)) => {
                 if let Some(entry) = self.sidebar.active().and_then(|c| {
                     c.feed
@@ -262,6 +289,14 @@ impl App {
                 if let Some(conn) = self.sidebar.active_mut() {
                     conn.capturing = !conn.capturing;
                 }
+                Task::none()
+            }
+            Message::StartMockCapture => {
+                self.mock_running = true;
+                Task::none()
+            }
+            Message::StopMockCapture => {
+                self.mock_running = false;
                 Task::none()
             }
             Message::Menu(_) => Task::none(),
@@ -543,19 +578,22 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
+        let mock_running = self.mock_running;
+        let applied_templates = self.applied_templates.clone();
         let data_subs: Vec<Subscription<Message>> = self
             .sidebar
             .connections
             .iter()
-            .filter(|c| c.item.live)
+            .filter(|c| c.item.live && mock_running)
             .map(|c| {
                 let id = c.item.id;
+                let applied = applied_templates.clone();
                 Subscription::run_with_id(
                     id,
                     iced::stream::channel(256, move |mut output| async move {
                         use iced::futures::SinkExt;
                         let (tx, mut rx) = tokio::sync::mpsc::channel(256);
-                        Box::new(MockSource).start(tx);
+                        Box::new(MockSource::new(applied)).start(tx);
                         loop {
                             let first = rx.recv().await;
                             let Some(first) = first else { break };
@@ -586,6 +624,20 @@ impl App {
         );
 
         let mut all = data_subs;
+
+        let kbd_sub = iced::event::listen_with(|event, _status, _window| match event {
+            iced::Event::Keyboard(iced::keyboard::Event::KeyPressed { key, .. }) => match key {
+                iced::keyboard::Key::Character(c) if c.as_str() == "s" => {
+                    Some(Message::StartMockCapture)
+                }
+                iced::keyboard::Key::Character(c) if c.as_str() == "d" => {
+                    Some(Message::StopMockCapture)
+                }
+                _ => None,
+            },
+            _ => None,
+        });
+        all.push(kbd_sub);
 
         if self.sidebar_dragging {
             let drag_sub = iced::event::listen_with(|event, _status, _window| match event {

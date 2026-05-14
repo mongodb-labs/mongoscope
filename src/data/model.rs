@@ -105,6 +105,19 @@ impl Plan {
 }
 
 #[derive(Debug, Clone)]
+pub struct IndexSuggestion {
+    pub ixscan_ms: u32,
+    pub fetch_ms: u32,
+    pub sort_ms: u32,
+    pub limit_ms: u32,
+}
+
+#[derive(Debug, Clone)]
+pub enum Suggestion {
+    CreateIndex(IndexSuggestion),
+}
+
+#[derive(Debug, Clone)]
 pub struct QueryEntry {
     pub id: QueryId,
     pub t_ms: TimestampMs,
@@ -128,6 +141,7 @@ pub struct QueryEntry {
     pub cluster_time: Option<String>,
     pub response_docs: Vec<BsonDoc>,
     pub rejected_plan_count: u8,
+    pub suggestions: Vec<Suggestion>,
 }
 
 #[derive(Debug, Clone)]
