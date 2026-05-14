@@ -16,7 +16,7 @@ pub struct Template {
     pub base_latency_ms: u32,
     pub warn: Option<&'static str>,
     pub slow: bool,
-    pub filter_keys: &'static [&'static str],
+    pub filter_fields: &'static [(&'static str, &'static str)],
     pub pipeline_stages: &'static [&'static str],
 }
 
@@ -36,7 +36,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 4,
             warn: None,
             slow: false,
-            filter_keys: &["userId", "status"],
+            filter_fields: &[("userId", "…"), ("status", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -51,7 +51,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 4821,
             warn: Some("collection scan"),
             slow: true,
-            filter_keys: &[],
+            filter_fields: &[],
             pipeline_stages: &["$match", "$group", "$sort", "$limit"],
         },
         Template {
@@ -66,7 +66,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 1,
             warn: None,
             slow: false,
-            filter_keys: &["sku"],
+            filter_fields: &[("sku", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -83,7 +83,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 18,
             warn: None,
             slow: false,
-            filter_keys: &["category", "price", "inStock"],
+            filter_fields: &[("category", "…"), ("price", "…"), ("inStock", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -98,7 +98,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 2,
             warn: None,
             slow: false,
-            filter_keys: &["_id"],
+            filter_fields: &[("_id", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -113,7 +113,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 1,
             warn: None,
             slow: false,
-            filter_keys: &[],
+            filter_fields: &[],
             pipeline_stages: &[],
         },
         Template {
@@ -128,7 +128,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 1,
             warn: None,
             slow: false,
-            filter_keys: &["token"],
+            filter_fields: &[("token", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -145,7 +145,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 7,
             warn: None,
             slow: false,
-            filter_keys: &["productId", "rating"],
+            filter_fields: &[("productId", "…"), ("rating", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -162,7 +162,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 612,
             warn: Some("unbounded $lookup"),
             slow: false,
-            filter_keys: &[],
+            filter_fields: &[],
             pipeline_stages: &["$match", "$lookup", "$addFields", "$sort"],
         },
         Template {
@@ -177,7 +177,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 2,
             warn: None,
             slow: false,
-            filter_keys: &["email"],
+            filter_fields: &[("email", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -194,7 +194,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 3,
             warn: None,
             slow: false,
-            filter_keys: &["warehouse", "sku"],
+            filter_fields: &[("warehouse", "…"), ("sku", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -209,7 +209,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 1,
             warn: None,
             slow: false,
-            filter_keys: &["_id"],
+            filter_fields: &[("_id", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -224,7 +224,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 3104,
             warn: Some("no index on shipping.country"),
             slow: true,
-            filter_keys: &["shipping.country", "status"],
+            filter_fields: &[("shipping.country", "Belgium"), ("status", "paid")],
             pipeline_stages: &[],
         },
         Template {
@@ -239,7 +239,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 11,
             warn: None,
             slow: false,
-            filter_keys: &["tags"],
+            filter_fields: &[("tags", "…")],
             pipeline_stages: &[],
         },
         Template {
@@ -254,7 +254,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 9,
             warn: None,
             slow: false,
-            filter_keys: &["status"],
+            filter_fields: &[("status", "…")],
             pipeline_stages: &[],
         },
         // analytics database
@@ -270,7 +270,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 88,
             warn: None,
             slow: false,
-            filter_keys: &["ts", "page"],
+            filter_fields: &[("ts", "…"), ("page", "…")],
             pipeline_stages: &["$match", "$group", "$sort"],
         },
         Template {
@@ -285,7 +285,7 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 712,
             warn: Some("collection scan on funnels"),
             slow: true,
-            filter_keys: &["campaignId"],
+            filter_fields: &[("campaignId", "…")],
             pipeline_stages: &[],
         },
         // auth database
@@ -301,19 +301,20 @@ pub fn all_templates() -> Vec<Template> {
             base_latency_ms: 1,
             warn: None,
             slow: false,
-            filter_keys: &["token", "exp"],
+            filter_fields: &[("token", "…"), ("exp", "…")],
             pipeline_stages: &[],
         },
     ]
 }
 
-pub fn build_filter(keys: &[&str]) -> Option<BsonDoc> {
-    if keys.is_empty() {
+pub fn build_filter(fields: &[(&str, &str)]) -> Option<BsonDoc> {
+    if fields.is_empty() {
         return None;
     }
     Some(
-        keys.iter()
-            .map(|k| (k.to_string(), BsonVal::Str("…".into())))
+        fields
+            .iter()
+            .map(|(k, v)| (k.to_string(), BsonVal::Str(v.to_string())))
             .collect(),
     )
 }

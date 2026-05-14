@@ -105,6 +105,80 @@ impl InspectorState {
         }
     }
 
+    pub fn seed_compose(&mut self, entry: &QueryEntry) {
+        use crate::data::model::{BsonVal, Op};
+
+        fn fmt_val(v: &BsonVal) -> String {
+            match v {
+                BsonVal::Str(s) => format!("\"{}\"", s),
+                BsonVal::Int(n) => n.to_string(),
+                BsonVal::Float(f) => format!("{:.2}", f),
+                BsonVal::Bool(b) => b.to_string(),
+                BsonVal::ObjectId(s) => format!("ObjectId(\"{}\")", s),
+                BsonVal::IsoDate(s) => format!("ISODate(\"{}\")", s),
+                BsonVal::Null => "null".into(),
+                _ => "\"…\"".into(),
+            }
+        }
+
+        let coll = entry.coll.as_str();
+        let query = match &entry.op {
+            Op::Find | Op::FindOne => {
+                let filter = entry
+                    .filter
+                    .as_ref()
+                    .map(|f| {
+                        let pairs: Vec<String> = f
+                            .iter()
+                            .map(|(k, v)| format!("  \"{}\": {}", k, fmt_val(v)))
+                            .collect();
+                        format!("{{\n{}\n}}", pairs.join(",\n"))
+                    })
+                    .unwrap_or_else(|| "{}".into());
+                let method = if matches!(entry.op, Op::FindOne) {
+                    "findOne"
+                } else {
+                    "find"
+                };
+                format!("db.{}.{}(\n{}\n)", coll, method, filter)
+            }
+            Op::Aggregate => {
+                let stages = entry
+                    .pipeline
+                    .as_ref()
+                    .map(|p| {
+                        let s: Vec<String> = p
+                            .iter()
+                            .map(|stage| {
+                                let key = stage.keys().next().cloned().unwrap_or_default();
+                                format!("  {{ {}: {{}} }}", key)
+                            })
+                            .collect();
+                        format!("[\n{}\n]", s.join(",\n"))
+                    })
+                    .unwrap_or_else(|| "[]".into());
+                format!("db.{}.aggregate(\n{}\n)", coll, stages)
+            }
+            Op::CountDocuments => {
+                let filter = entry
+                    .filter
+                    .as_ref()
+                    .map(|f| {
+                        let pairs: Vec<String> = f
+                            .iter()
+                            .map(|(k, v)| format!("  \"{}\": {}", k, fmt_val(v)))
+                            .collect();
+                        format!("{{\n{}\n}}", pairs.join(",\n"))
+                    })
+                    .unwrap_or_else(|| "{}".into());
+                format!("db.{}.countDocuments(\n{}\n)", coll, filter)
+            }
+            _ => format!("db.{}.find({{}})", coll),
+        };
+
+        self.compose = ComposeState::with_query(&query);
+    }
+
     pub fn update(&mut self, msg: InspectorMsg) {
         match msg {
             InspectorMsg::TabSelect(tab) => {

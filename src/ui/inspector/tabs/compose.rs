@@ -24,8 +24,6 @@ impl ComposeState {
         }
     }
 
-    // TODO: remove when real backend is wired up — currently all mock data
-    #[allow(dead_code)]
     pub fn with_query(query: &str) -> Self {
         Self {
             content: text_editor::Content::with_text(query),
