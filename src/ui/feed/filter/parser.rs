@@ -28,7 +28,11 @@ impl Preset {
     }
 
     pub fn all() -> &'static [Preset] {
-        &[Preset::SlowQueries, Preset::CollScanOnly, Preset::WithSuggestions]
+        &[
+            Preset::SlowQueries,
+            Preset::CollScanOnly,
+            Preset::WithSuggestions,
+        ]
     }
 }
 

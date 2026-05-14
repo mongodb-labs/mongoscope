@@ -2,14 +2,18 @@ mod data;
 mod theme;
 mod ui;
 
-use data::{mock::{MockSource, all_templates}, model::QueryEntry, source::DataSource};
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
+use data::{
+    mock::{all_templates, MockSource},
+    model::QueryEntry,
+    source::DataSource,
+};
 use iced::{
     mouse,
     widget::{column, container, mouse_area, row, scrollable, stack},
     Element, Length, Subscription, Task,
 };
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use theme::{Density, Theme};
 use ui::{

@@ -69,9 +69,7 @@ impl DataSource for MockSource {
                     let latency = ((after_total as f64 * jitter) as u32).max(1);
                     (
                         latency,
-                        Some(Plan::IxScan(
-                            IndexName::try_new("suggested_idx_1").unwrap(),
-                        )),
+                        Some(Plan::IxScan(IndexName::try_new("suggested_idx_1").unwrap())),
                         tpl.docs_returned.map(DocsExamined::new),
                         None,
                         latency >= 1000,
