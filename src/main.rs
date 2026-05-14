@@ -151,6 +151,13 @@ impl App {
                 let new_selected = self.sidebar.active().and_then(|c| c.feed.selected);
                 if new_selected != prev_selected {
                     self.inspector.explain = ExplainState::default();
+                    if let Some(entry) = self.sidebar.active().and_then(|c| {
+                        c.feed
+                            .selected
+                            .and_then(|id| c.feed.entries.iter().find(|e| e.id == id))
+                    }) {
+                        self.inspector.seed_compose(entry);
+                    }
                     if new_selected.is_some()
                         && matches!(self.inspector_panel, InspectorPanel::Closed)
                     {

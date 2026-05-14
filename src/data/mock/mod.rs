@@ -65,7 +65,7 @@ impl DataSource for MockSource {
                         .unwrap_or(false);
 
                 let (latency, plan, docs_examined, warn, slow, suggestions) = if index_applied {
-                    let after_total = (base_latency as f32 * selectivity).max(2.0) as u32;
+                    let after_total = (base_latency as f32 * selectivity).max(20.0) as u32;
                     let latency = ((after_total as f64 * jitter) as u32).max(1);
                     (
                         latency,
@@ -76,7 +76,7 @@ impl DataSource for MockSource {
                         vec![],
                     )
                 } else if is_collscan {
-                    let after_total = (base_latency as f32 * selectivity).max(2.0);
+                    let after_total = (base_latency as f32 * selectivity).max(20.0);
                     let suggestions = vec![Suggestion::CreateIndex(IndexSuggestion {
                         ixscan_ms: (after_total * 0.30) as u32,
                         fetch_ms: (after_total * 0.55) as u32,
@@ -137,7 +137,7 @@ impl DataSource for MockSource {
                     index: tpl.index.map(|i| IndexName::try_new(i).unwrap()),
                     docs_examined,
                     docs_returned: docs_returned.map(DocsReturned::new),
-                    filter: build_filter(tpl.filter_keys),
+                    filter: build_filter(tpl.filter_fields),
                     pipeline: build_pipeline(tpl.pipeline_stages),
                     update: None,
                     doc: None,

@@ -11,13 +11,17 @@ fn make_doc(coll: &str, i: usize) -> BsonDoc {
         "orders" => {
             doc.insert(
                 "userId".into(),
-                BsonVal::ObjectId("65fe21c3a8b4e9c2d1f04a12".into()),
+                BsonVal::ObjectId(format!("65fe21c3a8b4e9c2d1f0{:04x}", 0x4a12 + i)),
             );
             doc.insert("total".into(), BsonVal::Float(49.0 + i as f64 * 17.33));
-            doc.insert(
-                "status".into(),
-                BsonVal::Str(["paid", "pending", "shipped"][i % 3].into()),
+            doc.insert("status".into(), BsonVal::Str("paid".into()));
+            let mut shipping: BsonDoc = IndexMap::new();
+            shipping.insert("country".into(), BsonVal::Str("Belgium".into()));
+            shipping.insert(
+                "address".into(),
+                BsonVal::Str(format!("Rue de la Loi {}", 10 + i * 3)),
             );
+            doc.insert("shipping".into(), BsonVal::Doc(shipping));
             doc.insert(
                 "createdAt".into(),
                 BsonVal::IsoDate(format!("2026-04-{}T09:{:02}:41Z", 20 + i % 10, 12 + i % 48)),
@@ -130,7 +134,7 @@ pub fn gen_response_docs(coll: &str, op: &Op, n: usize) -> Vec<BsonDoc> {
         Op::Find | Op::FindOne | Op::Aggregate | Op::CountDocuments
     );
     if is_read {
-        let count = n.min(5);
+        let count = n.min(50);
         (0..count).map(|i| make_doc(coll, i)).collect()
     } else {
         // Write ops return an empty vec; the response is synthesized from model metadata

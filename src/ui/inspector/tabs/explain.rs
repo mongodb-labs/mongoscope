@@ -209,11 +209,15 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let stages_col = column(stage_rows).spacing(3);
 
     // ── suggestions card
-    let first_key = entry
-        .filter
-        .as_ref()
-        .and_then(|f| f.keys().next().cloned())
-        .unwrap_or_else(|| "field".to_string());
+    let index_spec = {
+        let keys: Vec<String> = entry
+            .filter
+            .as_ref()
+            .map(|f| f.keys().cloned().collect())
+            .unwrap_or_else(|| vec!["field".to_string()]);
+        let pairs: Vec<String> = keys.iter().map(|k| format!("\"{}\": 1", k)).collect();
+        format!("{{ {} }}", pairs.join(", "))
+    };
     let coll = entry.coll.as_str().to_string();
     let docs_ex = entry
         .docs_examined
@@ -248,7 +252,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let ok = palette.ok;
     let tok_call = palette.tok_call;
     let tok_str = palette.tok_str;
-    let tok_num = palette.tok_num;
+    let _tok_num = palette.tok_num;
     let index_applied = state.index_applied;
 
     use crate::data::model::Suggestion;
@@ -561,23 +565,15 @@ pub fn explain_tab<Msg: Clone + 'static>(
                         .size(fs_small)
                         .color(tok_call)
                         .font(iced::Font::MONOSPACE),
-                    text("({ ")
+                    text("(")
                         .size(fs_small)
                         .color(fg)
                         .font(iced::Font::MONOSPACE),
-                    text(format!("\"{}\"", first_key.clone()))
+                    text(index_spec.clone())
                         .size(fs_small)
                         .color(tok_str)
                         .font(iced::Font::MONOSPACE),
-                    text(": ")
-                        .size(fs_small)
-                        .color(fg)
-                        .font(iced::Font::MONOSPACE),
-                    text("1")
-                        .size(fs_small)
-                        .color(tok_num)
-                        .font(iced::Font::MONOSPACE),
-                    text(" })")
+                    text(")")
                         .size(fs_small)
                         .color(fg)
                         .font(iced::Font::MONOSPACE),
