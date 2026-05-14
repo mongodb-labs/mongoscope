@@ -214,6 +214,26 @@ impl SidebarState {
         }
     }
 
+    pub fn sync_scope_from_filter(
+        &mut self,
+        db: Option<&str>,
+        coll: Option<&str>,
+        app: Option<&str>,
+    ) {
+        let Some(conn) = self.active_mut() else {
+            return;
+        };
+        for db_item in &mut conn.databases {
+            db_item.active = db.is_some_and(|d| d == db_item.name);
+            for coll_item in &mut db_item.collections {
+                coll_item.active = db_item.active && coll.is_some_and(|c| c == coll_item.name);
+            }
+        }
+        for client in &mut conn.clients {
+            client.active = app.is_some_and(|a| a == client.name);
+        }
+    }
+
     pub fn view<Msg: Clone + 'static>(
         &self,
         on_msg: impl Fn(SidebarMsg) -> Msg + 'static + Copy,
