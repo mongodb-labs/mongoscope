@@ -111,9 +111,11 @@ impl SidebarState {
                         d.error = None;
                     }
                 }
-                ConnectionsMsg::DialogConnectResult(Ok(port)) => {
+                ConnectionsMsg::DialogConnectResult(Ok(success)) => {
                     if let Some(d) = &mut self.dialog {
-                        d.proxy_port = port;
+                        d.proxy_port = success.proxy_port;
+                        d.upstream_host = success.upstream_host;
+                        d.upstream_port = success.upstream_port;
                         d.step = crate::ui::dialog::DialogStep::Step2;
                     }
                 }
@@ -155,6 +157,8 @@ impl SidebarState {
                             topology,
                             uri: d.uri.clone(),
                             proxy_port: d.proxy_port,
+                            upstream_host: d.upstream_host.clone(),
+                            upstream_port: d.upstream_port,
                             color: d.color,
                             active: true,
                             live: true,
@@ -382,6 +386,8 @@ mod tests {
             topology: "direct".into(),
             uri: "mongodb://localhost:27017/".into(),
             proxy_port: 27117,
+            upstream_host: String::new(),
+            upstream_port: 0,
             color: ConnectionColor::None,
             active: false,
             live: true,

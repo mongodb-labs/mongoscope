@@ -51,6 +51,7 @@ pub struct Filter {
     pub kind: KindFilter,
     pub preset: Option<Preset>,
     pub text: Option<String>,
+    pub show_system: bool,
 }
 
 impl Default for Filter {
@@ -62,6 +63,7 @@ impl Default for Filter {
             kind: KindFilter::All,
             preset: None,
             text: None,
+            show_system: false,
         }
     }
 }
@@ -112,6 +114,9 @@ impl Filter {
     }
 
     pub fn matches(&self, entry: &QueryEntry) -> bool {
+        if entry.is_system && !self.show_system {
+            return false;
+        }
         if !self.kind.matches(&entry.op) {
             return false;
         }
@@ -230,6 +235,7 @@ mod tests {
             doc: None,
             warn: None,
             slow: false,
+            is_system: false,
             conn_id: ConnId::new(10001),
             lsid: None,
             cluster_time: None,

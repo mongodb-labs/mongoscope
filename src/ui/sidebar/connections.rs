@@ -57,18 +57,27 @@ impl std::fmt::Display for ConnectionColor {
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
-// TODO: remove when real backend is wired up — currently all mock data
-#[allow(dead_code)]
 pub struct ConnectionItem {
     pub id: usize,
     pub label: String,
     pub topology: String,
     pub uri: String,
     pub proxy_port: u16,
+    /// Empty string = demo/mock mode. Non-empty = real MongoDB upstream.
+    pub upstream_host: String,
+    pub upstream_port: u16,
     pub color: ConnectionColor,
     pub active: bool,
     pub live: bool,
     pub shell_version: String,
+}
+
+/// Returned from the connect async task on success.
+#[derive(Debug, Clone)]
+pub struct DialogConnectSuccess {
+    pub proxy_port: u16,
+    pub upstream_host: String,
+    pub upstream_port: u16,
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────
@@ -82,7 +91,7 @@ pub enum ConnectionsMsg {
     DialogNameChanged(String),
     DialogColorChanged(ConnectionColor),
     DialogConnect,
-    DialogConnectResult(Result<u16, String>),
+    DialogConnectResult(Result<DialogConnectSuccess, String>),
     DialogCopyUri,
     DialogBack,
     DialogDone,

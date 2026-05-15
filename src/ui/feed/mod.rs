@@ -62,6 +62,12 @@ impl FeedState {
     pub fn push_entry(&mut self, entry: QueryEntry) -> bool {
         self.now_ms = entry.t_ms.into_inner();
         self.buckets.push(&entry, self.now_ms);
+        // Replace existing entry with same conn_id (explain enrichment arriving after
+        // direct emit). conn_id == wire protocol request_id, unique per request.
+        if let Some(pos) = self.entries.iter().position(|e| e.conn_id == entry.conn_id) {
+            self.entries[pos] = entry;
+            return true;
+        }
         self.entries.insert(0, entry);
         self.entries.truncate(2000);
         true

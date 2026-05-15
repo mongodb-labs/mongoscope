@@ -1,15 +1,15 @@
 pub mod header;
 pub mod tabs;
 
-use crate::{data::model, data::model::QueryEntry, theme::Palette};
+use crate::{data::model::QueryEntry, theme::Palette};
 use header::inspector_header;
 use iced::{
     widget::{column, container, row},
     Border, Color, Element, Length, Padding,
 };
 use tabs::{
-    explain_tab, overview_tab, request_tab, response_tab, rules_tab, schema_tab, ComposeMsg,
-    ComposeState, ExplainMsg, ExplainState, Rule, RuleAction, RulesMsg,
+    explain_tab, overview_tab, request_tab, response_tab, ComposeMsg, ComposeState, ExplainMsg,
+    ExplainState, Rule, RuleAction, RulesMsg,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,14 +36,12 @@ impl InspectorTab {
         }
     }
     pub fn all() -> &'static [InspectorTab] {
+        // Compose (#33), Rules (#32), Schema (#28) hidden until implemented.
         &[
             InspectorTab::Overview,
             InspectorTab::Request,
             InspectorTab::Response,
             InspectorTab::Explain,
-            InspectorTab::Compose,
-            InspectorTab::Rules,
-            InspectorTab::Schema,
         ]
     }
 }
@@ -182,7 +180,9 @@ impl InspectorState {
     pub fn update(&mut self, msg: InspectorMsg) {
         match msg {
             InspectorMsg::TabSelect(tab) => {
-                self.tab = tab;
+                if InspectorTab::all().contains(&tab) {
+                    self.tab = tab;
+                }
             }
             InspectorMsg::Compose(m) => self.compose.update(m),
             InspectorMsg::Rules(RulesMsg::Toggle(id)) => {
@@ -298,7 +298,6 @@ impl InspectorState {
         let tab_bar = column![tab_row, tab_border];
 
         let fg_dim2 = palette.fg_dim2;
-        let schemas = model::mock_schemas();
 
         let content: Element<'a, Msg> = match entry {
             None => container(
@@ -325,22 +324,9 @@ impl InspectorState {
                     &palette,
                     fs,
                 ),
-                InspectorTab::Compose => self.compose.view(
-                    move |m| on_msg(InspectorMsg::Compose(m)),
-                    palette,
-                    fs,
-                    cluster_label,
-                    shell_version,
-                ),
-                InspectorTab::Rules => rules_tab(
-                    &self.rules,
-                    move |m| on_msg(InspectorMsg::Rules(m)),
-                    &palette,
-                    fs,
-                ),
-                InspectorTab::Schema => {
-                    let schema = schemas.iter().find(|s| s.coll == e.coll);
-                    schema_tab(e, schema, &palette, fs)
+                InspectorTab::Compose | InspectorTab::Rules | InspectorTab::Schema => {
+                    // Hidden tabs (#28, #32, #33) — fall through to Overview.
+                    overview_tab(e, move || on_msg(InspectorMsg::SuggestIndex), &palette, fs)
                 }
             },
         };

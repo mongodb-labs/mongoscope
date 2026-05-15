@@ -1,4 +1,7 @@
-use crate::data::model::QueryEntry;
+use crate::data::{
+    model::QueryEntry,
+    source::{new_entry_store, EntryStore},
+};
 use crate::ui::feed::FeedState;
 use crate::ui::sidebar::clients::{app_color_for, ClientItem};
 use crate::ui::sidebar::collections::CollectionItem;
@@ -11,6 +14,7 @@ pub struct ConnectionState {
     pub databases: Vec<DatabaseItem>,
     pub clients: Vec<ClientItem>,
     pub capturing: bool,
+    pub entry_store: EntryStore,
 }
 
 impl ConnectionState {
@@ -21,6 +25,7 @@ impl ConnectionState {
             databases: vec![],
             clients: vec![],
             capturing: true,
+            entry_store: new_entry_store(),
         }
     }
 
@@ -79,6 +84,8 @@ mod tests {
             topology: "direct".into(),
             uri: "mongodb://localhost:27017/".into(),
             proxy_port: 27117,
+            upstream_host: String::new(),
+            upstream_port: 0,
             color: ConnectionColor::None,
             active: true,
             live: true,

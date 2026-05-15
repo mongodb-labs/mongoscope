@@ -20,9 +20,12 @@ _(none yet)_
 - `nutype 0.5` — newtypes for QueryId, Timestamp, etc.
 - `indexmap 2` — ordered maps
 - `tokio 1` — features: time, rt-multi-thread, macros, sync
-- `rand 0.8` — mock data generation (SmallRng, seed 42)
-- `serde 1` — serialization
-- Mock data source at 2–3 entries/sec (`src/data/mock/`)
+- `serde 1` / `serde_json 1` — serialization
+- `bson 2` — BSON document parsing
+- `mongod-proxy` (private git) — transparent TCP proxy with explain events and Tower layer interception
+- `rmcp 1.7` — MCP server (stdio + streamable HTTP transports)
+- `axum 0.8` — HTTP server for GUI MCP endpoint
+- `clap 4` — CLI argument parsing (`--mcp` flag for headless stdio mode)
 
 ## Keeping CLAUDE.md up to date
 
@@ -43,17 +46,18 @@ cargo clippy
 
 ```
 src/
-├── main.rs                        # App entry, layout composition, Msg enum, subscriptions (~1700 lines)
+├── main.rs                        # App entry, layout composition, Msg enum, subscriptions, MCP HTTP server
 ├── theme.rs                       # Palette (Copy), fonts, Density (Compact/Comfy), dark/light
+├── mcp/
+│   └── mod.rs                     # MongoscopeMcp handler, ConnectionStore, tool implementations
 ├── data/
 │   ├── mod.rs
 │   ├── types.rs                   # Newtypes: QueryId, TimestampMs, LatencyMs, DatabaseName, etc.
-│   ├── model.rs                   # QueryEntry, CollectionInfo, SchemaField, Suggestion
-│   ├── source.rs                  # DataSource trait
-│   └── mock/
-│       ├── mod.rs                 # MockSource — streams entries via tokio channel
-│       ├── templates.rs           # 12 query pattern templates
-│       └── docs.rs                # Response document generation
+│   ├── model.rs                   # QueryEntry, Op, Plan, Suggestion, BsonDoc/BsonVal
+│   ├── source.rs                  # DataSource trait + EntryStore (Arc<Mutex<VecDeque<QueryEntry>>>)
+│   └── proxy/
+│       ├── mod.rs                 # ProxySource (DataSource impl), spawn_proxy, parse_mongo_uri
+│       └── intercept.rs           # Tower Layer: captures filter/pipeline/update/response_docs/app_name
 └── ui/
     ├── mod.rs
     ├── dialog.rs                  # Generic dialog wrapper
@@ -62,8 +66,8 @@ src/
     ├── topbar/                    # Logo, menu bar, URI display, MCP btn, theme/density toggles
     ├── sidebar/
     │   ├── connections.rs         # Connection list + 2-step add-connection dialog
-    │   ├── connection_state.rs    # Per-connection state (name, color, capturing)
-    │   ├── databases.rs           # DB/collection tree with doc counts, sizes, index counts
+    │   ├── connection_state.rs    # Per-connection state (name, color, capturing, entry_store)
+    │   ├── databases.rs           # DB/collection tree built from captured traffic
     │   ├── clients.rs             # App name filter with color dots
     │   └── filters.rs             # Quick-toggle preset filters
     ├── feed/
@@ -80,9 +84,9 @@ src/
     │       ├── request.rs         # Filter/pipeline/update as BSON tree
     │       ├── response.rs        # Returned documents
     │       ├── explain.rs         # Plan analysis, index suggestion, before/after
-    │       ├── compose.rs         # Query text editor
-    │       ├── rules.rs           # Pattern rules (warn/block/highlight)
-    │       └── schema.rs          # Field types, coverage %, sample values
+    │       ├── compose.rs         # Query text editor (hidden, issue #33)
+    │       ├── rules.rs           # Pattern rules (hidden, issue #32)
+    │       └── schema.rs          # Field types, coverage %, sample values (hidden, issue #28)
     └── widgets/
         ├── op_badge.rs            # Operation type badge (colored)
         ├── plan_chip.rs           # IXSCAN / COLLSCAN / IDHACK chip
@@ -130,24 +134,19 @@ QueryEntry {
 
 **BSON types rendered**: Null, Bool, Int, Float, ObjectId, IsoDate, Timestamp, NumberLong, Array, Doc
 
-## Mock data catalog
+## Data pipeline
 
-Database: `shop`. Collections:
+No mock data. All entries come from real MongoDB wire protocol via the transparent proxy.
 
-| Collection | Docs | Size | Indexes |
-|------------|------|------|---------|
-| orders | 2.4M | 8.4GB | 7 |
-| products | 184K | 412MB | 5 |
-| users | 892K | 1.8GB | 6 |
-| carts | 45K | 89MB | 3 |
-| sessions | 12M | 4.2GB | 4 |
-| reviews | 334K | 892MB | 4 |
-| inventory | 28K | 67MB | 5 |
-| events | 89M | 41.2GB | 2 |
+**Flow:**
+1. User adds connection (URI → `DialogDone`)
+2. `ConnectionState` created with its own `EntryStore`; `ConnectionRecord` registered in `ConnectionStore`
+3. Subscription fires `ProxySource::start(tx, entry_store)` — binds proxy port, intercepts traffic
+4. `InterceptLayer` (Tower) captures filter/pipeline/update/response_docs/app_name per request
+5. `ExplainEvent` arrives → `explain_to_entry()` merges intercepted data → writes to both mpsc (GUI feed) and `EntryStore` (MCP)
+6. MCP server reads same `EntryStore` — GUI and MCP see identical data
 
-Client apps: `checkout-svc`, `catalog-api`, `analytics-worker`, `admin-portal`, `mobile-bff`
-
-12 query templates covering: find with IXSCAN, find with COLLSCAN (slow, for demo), aggregate COLLSCAN (slow), insert, update, delete, IDHACK patterns. RNG seed 42 for reproducibility. Latency jitter 0.8–1.2×.
+**EntryStore** = `Arc<Mutex<VecDeque<QueryEntry>>>` capped at 10,000 entries per connection.
 
 ## Feed filter syntax
 
@@ -166,29 +165,31 @@ Kind filter: All / Read / Write / Delete.
 
 Default height 475px. Drag divider to resize. Maximize button for fullscreen. Only visible when an entry is selected.
 
-7 tabs: Overview, Request, Response, Explain, Compose, Rules, Schema.
+4 visible tabs: Overview, Request, Response, Explain.
+3 hidden tabs (infrastructure kept, not shown in tab bar): Compose (#33), Rules (#32), Schema (#28).
 
-Explain tab: shows plan type, docs examined/returned, index used. If COLLSCAN detected, shows `CreateIndex` suggestion with copyable shell command and before/after plan comparison.
-
-Schema tab: 13 fields per collection with type labels, coverage percentages, sample values.
+Explain tab: shows plan type, docs examined/returned, index used. If COLLSCAN + filter captured, shows `CreateIndex` suggestion with copyable shell command and before/after plan comparison.
 
 ## MCP panel
 
-Overlay modal. Port default 3717. States: Stopped → Starting (simulated delay) → Running. Shows config snippet to paste into Claude or other MCP clients.
+Overlay modal. States: Stopped → Starting → Running. Start button spawns a real axum HTTP server (`StreamableHttpService`) on a random port; port shown in config snippet once running. Shows ready-to-paste config for Claude/MCP clients. Stop button aborts the server task.
+
+Headless mode: `mongoscope --mcp` runs a standalone stdio MCP server (no GUI).
 
 ## App-level state (App struct in main.rs)
 
 - `theme: Theme` (Dark/Light)
 - `density: Density` (Compact 28px / Comfy 34px)
 - `sidebar_width: f32` (draggable)
-- `inspector_height: f32` (draggable, default 475px)
+- `inspector_panel: InspectorPanel` (Closed / Open { height } / Maximized)
 - `sidebar: SidebarState`
-- `feed: FeedState`
 - `inspector: InspectorState`
 - `mcp_panel: McpPanelState`
-- `topbar: TopbarState`
+- `connection_store: mcp::ConnectionStore` — shared with MCP server; keyed by connection ID
+- `mcp_next_id: Arc<AtomicU64>` — global monotonic query ID across all connections
+- `mcp_abort: Option<tokio::task::AbortHandle>` — abort handle for running MCP HTTP server
 
-Subscriptions: keyboard (`s` start, `d` stop mock), mock data stream, drag events for resize handles.
+Subscriptions: per-connection proxy data stream (one subscription per live connection), drag events for sidebar/inspector resize handles.
 
 ## Key patterns
 
