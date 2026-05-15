@@ -24,6 +24,10 @@ _(none yet)_
 - `serde 1` — serialization
 - Mock data source at 2–3 entries/sec (`src/data/mock/`)
 
+## Keeping CLAUDE.md up to date
+
+When adding new files, modules, data types, UI components, or changing key patterns: update the relevant section in this file. This is the primary context source for AI sessions — stale docs waste time.
+
 ## Before marking work done
 
 Always run these in order and confirm all pass:
