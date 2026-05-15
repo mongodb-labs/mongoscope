@@ -443,6 +443,9 @@ where
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Ready(Some(Ok(msg))) => {
                 let docs = extract_response_docs(&msg.operation);
+                // Clone app_name before acquiring pending lock to keep lock order consistent:
+                // always app_name → pending, never pending → app_name.
+                let app_name = self.app_name.lock().unwrap().clone();
                 let mut pending = self.pending.lock().unwrap();
                 if let Some(entry) = pending.get_mut(&self.request_id) {
                     if !docs.is_empty() {
@@ -452,7 +455,6 @@ where
                     // ExplainEvent (if it fires) can still consume filter/pipeline/etc.
                     let now = current_ms();
                     let latency_ms = now.saturating_sub(entry.start_ms) as u32;
-                    let app_name = self.app_name.lock().unwrap().clone();
                     let direct = DirectEntry {
                         request_id: self.request_id,
                         command: entry.command.clone(),
@@ -588,14 +590,18 @@ fn extract_update(operation: &Operation) -> (Option<BsonDoc>, Option<BsonDoc>) {
 
 fn extract_delete_filter(operation: &Operation) -> Option<BsonDoc> {
     let body = op_msg_body(operation)?;
-    if let Ok(deletes) = body.get_array("deletes") {
-        if let Some(bson::Bson::Document(d)) = deletes.first() {
-            if let Ok(q) = d.get_document("q") {
-                return Some(bson_doc_to_model(q));
+    body.get_array("deletes")
+        .ok()
+        .and_then(|arr| arr.first())
+        .and_then(|v| {
+            if let bson::Bson::Document(d) = v {
+                d.get_document("q").ok()
+            } else {
+                None
             }
-        }
-    }
-    body.get_document("query").ok().map(bson_doc_to_model)
+        })
+        .map(bson_doc_to_model)
+        .or_else(|| body.get_document("query").ok().map(bson_doc_to_model))
 }
 
 fn extract_insert_doc(operation: &Operation) -> Option<BsonDoc> {

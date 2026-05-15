@@ -116,6 +116,7 @@ impl SidebarState {
                         d.proxy_port = success.proxy_port;
                         d.upstream_host = success.upstream_host;
                         d.upstream_port = success.upstream_port;
+                        d.pending_listener = Some(success.listener);
                         d.step = crate::ui::dialog::DialogStep::Step2;
                     }
                 }
@@ -131,7 +132,7 @@ impl SidebarState {
                     }
                 }
                 ConnectionsMsg::DialogDone => {
-                    if let Some(d) = &self.dialog {
+                    if let Some(d) = self.dialog.take() {
                         let next_id = self
                             .connections
                             .iter()
@@ -164,13 +165,15 @@ impl SidebarState {
                             live: true,
                             shell_version: "mongosh 2.4.0".into(),
                         };
+                        let listener = d
+                            .pending_listener
+                            .unwrap_or_else(|| std::sync::Arc::new(std::sync::Mutex::new(None)));
                         for c in &mut self.connections {
                             c.item.active = false;
                         }
-                        self.connections.push(ConnectionState::new(item));
+                        self.connections.push(ConnectionState::new(item, listener));
                         self.active_id = Some(next_id);
                     }
-                    self.dialog = None;
                 }
                 ConnectionsMsg::DialogCancel => {
                     self.dialog = None;
@@ -395,10 +398,15 @@ mod tests {
         }
     }
 
+    fn no_listener() -> std::sync::Arc<std::sync::Mutex<Option<tokio::net::TcpListener>>> {
+        std::sync::Arc::new(std::sync::Mutex::new(None))
+    }
+
     impl SidebarState {
         fn default_for_test() -> Self {
             let mut s = SidebarState::new();
-            s.connections.push(ConnectionState::new(make_item(0)));
+            s.connections
+                .push(ConnectionState::new(make_item(0), no_listener()));
             s.active_id = Some(0);
             s
         }
@@ -413,8 +421,10 @@ mod tests {
     #[test]
     fn active_returns_correct_connection() {
         let mut s = SidebarState::new();
-        s.connections.push(ConnectionState::new(make_item(1)));
-        s.connections.push(ConnectionState::new(make_item(2)));
+        s.connections
+            .push(ConnectionState::new(make_item(1), no_listener()));
+        s.connections
+            .push(ConnectionState::new(make_item(2), no_listener()));
         s.active_id = Some(2);
         assert_eq!(s.active().unwrap().item.id, 2);
     }

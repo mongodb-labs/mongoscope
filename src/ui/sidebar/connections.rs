@@ -79,6 +79,8 @@ pub struct DialogConnectSuccess {
     pub proxy_port: u16,
     pub upstream_host: String,
     pub upstream_port: u16,
+    /// Pre-bound listener; avoids TOCTOU between port discovery and `ProxySource::start()`.
+    pub listener: std::sync::Arc<std::sync::Mutex<Option<tokio::net::TcpListener>>>,
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────

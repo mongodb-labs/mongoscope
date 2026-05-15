@@ -15,10 +15,15 @@ pub struct ConnectionState {
     pub clients: Vec<ClientItem>,
     pub capturing: bool,
     pub entry_store: EntryStore,
+    /// Pre-bound listener passed to `ProxySource` on first subscription start.
+    pub pending_listener: std::sync::Arc<std::sync::Mutex<Option<tokio::net::TcpListener>>>,
 }
 
 impl ConnectionState {
-    pub fn new(item: ConnectionItem) -> Self {
+    pub fn new(
+        item: ConnectionItem,
+        pending_listener: std::sync::Arc<std::sync::Mutex<Option<tokio::net::TcpListener>>>,
+    ) -> Self {
         Self {
             item,
             feed: FeedState::new(),
@@ -26,6 +31,7 @@ impl ConnectionState {
             clients: vec![],
             capturing: true,
             entry_store: new_entry_store(),
+            pending_listener,
         }
     }
 
@@ -93,27 +99,31 @@ mod tests {
         }
     }
 
+    fn no_listener() -> std::sync::Arc<std::sync::Mutex<Option<tokio::net::TcpListener>>> {
+        std::sync::Arc::new(std::sync::Mutex::new(None))
+    }
+
     #[test]
     fn new_starts_capturing() {
-        let s = ConnectionState::new(make_item(1));
+        let s = ConnectionState::new(make_item(1), no_listener());
         assert!(s.capturing);
     }
 
     #[test]
     fn new_has_empty_databases() {
-        let s = ConnectionState::new(make_item(1));
+        let s = ConnectionState::new(make_item(1), no_listener());
         assert!(s.databases.is_empty());
     }
 
     #[test]
     fn new_has_empty_clients() {
-        let s = ConnectionState::new(make_item(1));
+        let s = ConnectionState::new(make_item(1), no_listener());
         assert!(s.clients.is_empty());
     }
 
     #[test]
     fn new_has_empty_feed() {
-        let s = ConnectionState::new(make_item(1));
+        let s = ConnectionState::new(make_item(1), no_listener());
         assert!(s.feed.entries.is_empty());
     }
 }

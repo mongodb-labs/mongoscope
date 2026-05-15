@@ -22,6 +22,8 @@ pub struct ConnectionDialogState {
     pub proxy_port: u16,
     pub upstream_host: String,
     pub upstream_port: u16,
+    /// Pre-bound listener from the connect task; handed off to `ProxySource` on `DialogDone`.
+    pub pending_listener: Option<std::sync::Arc<std::sync::Mutex<Option<tokio::net::TcpListener>>>>,
 }
 
 impl ConnectionDialogState {
@@ -35,6 +37,7 @@ impl ConnectionDialogState {
             proxy_port: 0,
             upstream_host: String::new(),
             upstream_port: 0,
+            pending_listener: None,
         }
     }
 }

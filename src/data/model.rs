@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::types::*;
 use indexmap::IndexMap;
 
@@ -49,7 +51,7 @@ pub enum Op {
 }
 
 impl Op {
-    pub fn label(&self) -> String {
+    pub fn label(&self) -> Cow<'static, str> {
         match self {
             Op::Find => "FIND".into(),
             Op::Aggregate => "AGG".into(),
@@ -58,7 +60,7 @@ impl Op {
             Op::UpdateOne => "UPD".into(),
             Op::UpdateMany => "UPD×".into(),
             Op::DeleteMany => "DEL".into(),
-            Op::Unknown(s) => s.to_uppercase(),
+            Op::Unknown(s) => s.to_uppercase().into(),
         }
     }
 }
@@ -71,11 +73,11 @@ pub enum Plan {
 }
 
 impl Plan {
-    pub fn label(&self) -> String {
+    pub fn label(&self) -> &'static str {
         match self {
-            Plan::CollScan => "COLLSCAN".into(),
-            Plan::IxScan(_) => "IXSCAN".into(),
-            Plan::IdHack => "IDHACK".into(),
+            Plan::CollScan => "COLLSCAN",
+            Plan::IxScan(_) => "IXSCAN",
+            Plan::IdHack => "IDHACK",
         }
     }
 }

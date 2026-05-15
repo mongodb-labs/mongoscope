@@ -179,11 +179,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let stages = explain_stages(entry, total_ms);
     let fs_small = (fs - 1.0).max(9.0);
 
-    let plan_label = entry
-        .plan
-        .as_ref()
-        .map(|p| p.label())
-        .unwrap_or_else(|| "—".to_string());
+    let plan_label = entry.plan.as_ref().map_or("—", |p| p.label());
     let is_bad = matches!(entry.plan, Some(Plan::CollScan));
     let plan_color = if is_bad { palette.danger } else { palette.fg };
     let border_c = Color {
