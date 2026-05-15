@@ -205,6 +205,7 @@ impl MongoCommand {
             Self::Delete => Op::DeleteMany,
             Self::FindAndModify => Op::UpdateOne,
             Self::Count => Op::CountDocuments,
+            Self::Distinct => Op::Unknown("DISTINCT".into()),
             Self::CreateCollection => Op::Unknown("CREATE-COLL".into()),
             Self::DropCollection => Op::Unknown("DROP-COLL".into()),
             Self::CreateIndexes => Op::Unknown("CREATE-IX".into()),
@@ -214,8 +215,22 @@ impl MongoCommand {
             Self::UpdateSearchIndex => Op::Unknown("UPD-SRCH-IX".into()),
             Self::RenameCollection => Op::Unknown("RENAME-COLL".into()),
             Self::DropDatabase => Op::Unknown("DROP-DB".into()),
+            Self::Explain => Op::Unknown("EXPLAIN".into()),
+            Self::ListDatabases => Op::Unknown("LIST-DBS".into()),
+            Self::ListCollections => Op::Unknown("LIST-COLLS".into()),
+            Self::ListIndexes => Op::Unknown("LIST-IX".into()),
+            Self::GetParameter => Op::Unknown("GET-PARAM".into()),
+            Self::GetMore => Op::Unknown("GETMORE".into()),
+            Self::KillCursors => Op::Unknown("KILL-CURS".into()),
+            Self::ConnectionStatus => Op::Unknown("CONN-STATUS".into()),
+            Self::ServerStatus => Op::Unknown("SRV-STATUS".into()),
+            Self::CurrentOp => Op::Unknown("CURRENT-OP".into()),
+            Self::ReplSetGetStatus => Op::Unknown("REPL-STATUS".into()),
+            Self::Hello | Self::Ping | Self::WhatsMyUri | Self::BuildInfo
+            | Self::EndSessions | Self::SaslStart | Self::SaslContinue
+            | Self::Logout | Self::GetNonce | Self::GetLastError
+            | Self::Authenticate => Op::Unknown("HANDSHAKE".into()),
             Self::Other(name) => Op::Unknown(name.to_uppercase()),
-            other => Op::Unknown(format!("{other:?}").to_uppercase()),
         }
     }
 }

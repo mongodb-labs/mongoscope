@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    sync::{atomic::AtomicU64, Arc, Mutex},
+    sync::{atomic::{AtomicU64, Ordering}, Arc, Mutex},
 };
 
 use indexmap::IndexMap;
@@ -150,7 +150,7 @@ impl MongoscopeMcp {
 
         let conn_id = {
             let mut guard = self.connections.lock().unwrap();
-            let id = guard.len() as u64 + 1;
+            let id = self.next_id.fetch_add(1, Ordering::Relaxed);
             guard.insert(
                 id,
                 ConnectionRecord {

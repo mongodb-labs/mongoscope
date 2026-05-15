@@ -8,6 +8,8 @@ pub use density_lane::density_lane;
 pub use filter::{FilterMsg, FilterState};
 pub use table::{table_header, table_view};
 
+use std::collections::VecDeque;
+
 use crate::{
     data::{model::QueryEntry, types::QueryId},
     theme::{Density, Palette},
@@ -30,7 +32,7 @@ pub enum FeedMsg {
 
 pub struct FeedState {
     pub filter: FilterState,
-    pub entries: Vec<QueryEntry>,
+    pub entries: VecDeque<QueryEntry>,
     pub selected: Option<QueryId>,
     pub buckets: Buckets,
     pub now_ms: u64,
@@ -46,7 +48,7 @@ impl FeedState {
     pub fn new() -> Self {
         Self {
             filter: FilterState::new(),
-            entries: Vec::new(),
+            entries: VecDeque::new(),
             selected: None,
             buckets: Buckets::new(500),
             now_ms: 0,
@@ -68,7 +70,7 @@ impl FeedState {
             self.entries[pos] = entry;
             return true;
         }
-        self.entries.insert(0, entry);
+        self.entries.push_front(entry);
         self.entries.truncate(2000);
         true
     }
