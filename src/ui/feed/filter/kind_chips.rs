@@ -40,11 +40,11 @@ impl KindFilter {
     pub fn matches(self, op: &Op) -> bool {
         match self {
             KindFilter::All => true,
-            KindFilter::Find => matches!(op, Op::Find | Op::FindOne),
+            KindFilter::Find => matches!(op, Op::Find),
             KindFilter::Aggregate => matches!(op, Op::Aggregate),
             KindFilter::Write => matches!(
                 op,
-                Op::InsertOne | Op::UpdateOne | Op::UpdateMany | Op::DeleteOne | Op::DeleteMany
+                Op::InsertOne | Op::UpdateOne | Op::UpdateMany | Op::DeleteMany
             ),
             KindFilter::Count => matches!(op, Op::CountDocuments),
             KindFilter::Unknown => matches!(op, Op::Unknown(_)),

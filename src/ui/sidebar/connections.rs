@@ -66,6 +66,7 @@ pub struct ConnectionItem {
     /// Empty string = demo/mock mode. Non-empty = real MongoDB upstream.
     pub upstream_host: String,
     pub upstream_port: u16,
+    #[allow(dead_code)] // read in clients.rs; false positive from derived Clone/Debug
     pub color: ConnectionColor,
     pub active: bool,
     pub live: bool,

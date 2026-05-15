@@ -10,7 +10,7 @@ use std::{
 
 use intercept::{
     new_app_name_store, new_direct_channel, new_pending_map, AppNameStore, DirectEntry,
-    InterceptLayer, MongoCommand, PendingMap,
+    InterceptLayer, PendingMap,
 };
 use mongod_proxy::{serve, Command, ExplainEvent, Proxy, Stage};
 use tokio::net::TcpListener;

@@ -94,6 +94,7 @@ pub struct ApplySuggestionParams {
 pub struct MongoscopeMcp {
     connections: ConnectionStore,
     next_id: Arc<AtomicU64>,
+    #[allow(dead_code)] // used by #[tool_router] macro expansion
     tool_router: ToolRouter<MongoscopeMcp>,
 }
 

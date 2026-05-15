@@ -66,7 +66,6 @@ pub enum MongoCommand {
 
     // ── Connection/auth handshake — always skipped, never shown ─────────────
     Hello,
-    IsMaster,
     Ping,
     WhatsMyUri,
     BuildInfo,
@@ -157,7 +156,6 @@ impl MongoCommand {
         matches!(
             self,
             Self::Hello
-                | Self::IsMaster
                 | Self::Ping
                 | Self::WhatsMyUri
                 | Self::BuildInfo

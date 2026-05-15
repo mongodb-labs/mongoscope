@@ -18,8 +18,11 @@ pub enum InspectorTab {
     Request,
     Response,
     Explain,
+    #[allow(dead_code)] // hidden — https://github.com/mongodb-labs/mongoscope/issues/33
     Compose,
+    #[allow(dead_code)] // hidden — https://github.com/mongodb-labs/mongoscope/issues/32
     Rules,
+    #[allow(dead_code)] // hidden — https://github.com/mongodb-labs/mongoscope/issues/28
     Schema,
 }
 
@@ -49,7 +52,9 @@ impl InspectorTab {
 #[derive(Debug, Clone)]
 pub enum InspectorMsg {
     TabSelect(InspectorTab),
+    #[allow(dead_code)] // hidden — https://github.com/mongodb-labs/mongoscope/issues/33
     Compose(ComposeMsg),
+    #[allow(dead_code)] // hidden — https://github.com/mongodb-labs/mongoscope/issues/32
     Rules(RulesMsg),
     Explain(ExplainMsg),
     SuggestIndex,
@@ -121,7 +126,7 @@ impl InspectorState {
 
         let coll = entry.coll.as_str();
         let query = match &entry.op {
-            Op::Find | Op::FindOne => {
+            Op::Find => {
                 let filter = entry
                     .filter
                     .as_ref()
@@ -133,12 +138,7 @@ impl InspectorState {
                         format!("{{\n{}\n}}", pairs.join(",\n"))
                     })
                     .unwrap_or_else(|| "{}".into());
-                let method = if matches!(entry.op, Op::FindOne) {
-                    "findOne"
-                } else {
-                    "find"
-                };
-                format!("db.{}.{}(\n{}\n)", coll, method, filter)
+                format!("db.{}.find(\n{}\n)", coll, filter)
             }
             Op::Aggregate => {
                 let stages = entry
@@ -225,8 +225,8 @@ impl InspectorState {
         on_msg: impl Fn(InspectorMsg) -> Msg + 'static + Copy,
         palette: Palette,
         fs: f32,
-        cluster_label: &str,
-        shell_version: &str,
+        _cluster_label: &str,
+        _shell_version: &str,
     ) -> Element<'a, Msg> {
         let bg1 = palette.bg1;
         let bg = palette.bg;

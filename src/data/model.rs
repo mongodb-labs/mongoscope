@@ -1,6 +1,8 @@
 use super::types::*;
 use indexmap::IndexMap;
 
+// Used by the hidden Schema tab — https://github.com/mongodb-labs/mongoscope/issues/28
+#[allow(dead_code)]
 pub struct SchemaField {
     pub name: &'static str,
     pub type_str: &'static str,
@@ -8,6 +10,8 @@ pub struct SchemaField {
     pub coverage_pct: u8,
 }
 
+// Used by the hidden Schema tab — https://github.com/mongodb-labs/mongoscope/issues/28
+#[allow(dead_code)]
 pub struct CollectionSchema {
     pub coll: CollectionName,
     pub fields: Vec<SchemaField>,
@@ -31,18 +35,14 @@ pub enum BsonVal {
     Null,
 }
 
-/// All known MongoDB operation types.
-/// Start all mock data as `Unknown` and promote to typed variants as support is added.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Op {
     Find,
-    FindOne,
     Aggregate,
     CountDocuments,
     InsertOne,
     UpdateOne,
     UpdateMany,
-    DeleteOne,
     DeleteMany,
     /// Raw command name from wire protocol.
     Unknown(String),
@@ -52,42 +52,22 @@ impl Op {
     pub fn label(&self) -> String {
         match self {
             Op::Find => "FIND".into(),
-            Op::FindOne => "FIND¹".into(),
             Op::Aggregate => "AGG".into(),
             Op::CountDocuments => "CNT".into(),
             Op::InsertOne => "INS".into(),
             Op::UpdateOne => "UPD".into(),
             Op::UpdateMany => "UPD×".into(),
-            Op::DeleteOne | Op::DeleteMany => "DEL".into(),
+            Op::DeleteMany => "DEL".into(),
             Op::Unknown(s) => s.to_uppercase(),
         }
     }
-
-    pub fn is_read(&self) -> bool {
-        matches!(
-            self,
-            Op::Find | Op::FindOne | Op::Aggregate | Op::CountDocuments
-        )
-    }
-
-    pub fn is_write(&self) -> bool {
-        matches!(self, Op::InsertOne | Op::UpdateOne | Op::UpdateMany)
-    }
-
-    pub fn is_delete(&self) -> bool {
-        matches!(self, Op::DeleteOne | Op::DeleteMany)
-    }
 }
 
-/// Winning query plan. `Unknown` for unrecognized stage names.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Plan {
     CollScan,
     IxScan(IndexName),
     IdHack,
-    IxScanLookup(IndexName),
-    /// Unrecognized plan stage — display as-is, no color coding.
-    Unknown(String),
 }
 
 impl Plan {
@@ -96,8 +76,6 @@ impl Plan {
             Plan::CollScan => "COLLSCAN".into(),
             Plan::IxScan(_) => "IXSCAN".into(),
             Plan::IdHack => "IDHACK".into(),
-            Plan::IxScanLookup(_) => "IXSCAN+LOOKUP".into(),
-            Plan::Unknown(s) => s.clone(),
         }
     }
 }

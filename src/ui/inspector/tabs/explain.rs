@@ -852,32 +852,6 @@ fn explain_stages(entry: &QueryEntry, total_ms: u32) -> Vec<FlameRowData> {
                 kind: FlameRowKind::Ok,
             },
         ],
-        Some(Plan::IxScanLookup(idx)) => vec![
-            FlameRowData {
-                name: "IXSCAN".into(),
-                ms: (total_ms as f32 * 0.10) as u32,
-                total_ms,
-                docs: None,
-                note: Some(idx.as_str().to_string()),
-                kind: FlameRowKind::Ok,
-            },
-            FlameRowData {
-                name: "$LOOKUP".into(),
-                ms: (total_ms as f32 * 0.75) as u32,
-                total_ms,
-                docs: entry.docs_examined.as_ref().map(|d| d.into_inner()),
-                note: entry.warn.clone(),
-                kind: FlameRowKind::Warn,
-            },
-            FlameRowData {
-                name: "PROJECTION".into(),
-                ms: (total_ms as f32 * 0.15) as u32,
-                total_ms,
-                docs: None,
-                note: None,
-                kind: FlameRowKind::Ok,
-            },
-        ],
         Some(Plan::IdHack) => vec![FlameRowData {
             name: "IDHACK".into(),
             ms: total_ms,

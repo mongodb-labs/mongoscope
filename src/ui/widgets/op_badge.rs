@@ -46,9 +46,9 @@ pub fn op_badge<Msg: 'static>(op: &Op, palette: &Palette) -> Element<'static, Ms
 
 pub fn op_color(op: &Op, p: &Palette) -> Color {
     match op {
-        Op::Find | Op::FindOne | Op::Aggregate | Op::CountDocuments => p.op_read,
+        Op::Find | Op::Aggregate | Op::CountDocuments => p.op_read,
         Op::InsertOne | Op::UpdateOne | Op::UpdateMany => p.op_write,
-        Op::DeleteOne | Op::DeleteMany => p.op_delete,
+        Op::DeleteMany => p.op_delete,
         Op::Unknown(_) => p.fg_dim,
     }
 }

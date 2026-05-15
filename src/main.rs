@@ -50,7 +50,7 @@ enum Message {
     ToggleTheme,
     ToggleDensity,
     ToggleCapture,
-    Menu(MenuMsg),
+    Menu(#[allow(dead_code)] MenuMsg),
     SidebarResizeStart,
     SidebarResizeMove(f32),
     SidebarResizeEnd,
