@@ -249,12 +249,17 @@ impl App {
                                     tokio::net::TcpListener::bind("127.0.0.1:0")
                                         .await
                                         .map_err(|e| format!("failed to bind proxy port: {e}"))?;
-                                let proxy_port = listener.local_addr().unwrap().port();
-                                drop(listener);
+                                let proxy_port = listener
+                                    .local_addr()
+                                    .map_err(|e| format!("failed to get proxy port: {e}"))?
+                                    .port();
                                 Ok(DialogConnectSuccess {
                                     proxy_port,
                                     upstream_host,
                                     upstream_port,
+                                    listener: std::sync::Arc::new(std::sync::Mutex::new(Some(
+                                        listener,
+                                    ))),
                                 })
                             },
                             |r| {
@@ -642,6 +647,7 @@ impl App {
                 let proxy_port = c.item.proxy_port;
                 let entry_store = c.entry_store.clone();
                 let next_id = self.mcp_next_id.clone();
+                let pending_listener = c.pending_listener.clone();
                 Subscription::run_with_id(
                     id,
                     iced::stream::channel(256, move |mut output| async move {
@@ -652,6 +658,7 @@ impl App {
                             upstream_port,
                             proxy_port,
                             next_id,
+                            pending_listener,
                         ))
                         .start(tx, entry_store);
                         loop {
@@ -728,7 +735,10 @@ async fn start_mcp_http_server(
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .map_err(|e| format!("failed to bind MCP port: {e}"))?;
-    let port = listener.local_addr().unwrap().port();
+    let port = listener
+        .local_addr()
+        .map_err(|e| format!("failed to get MCP port: {e}"))?
+        .port();
 
     let service = StreamableHttpService::new(
         move || {

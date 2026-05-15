@@ -580,10 +580,7 @@ fn index_spec_from_entry(e: &QueryEntry) -> Option<String> {
 }
 
 fn format_entry_summary(e: &QueryEntry) -> String {
-    let plan_label = match &e.plan {
-        Some(p) => p.label(),
-        None => "—".to_string(),
-    };
+    let plan_label = e.plan.as_ref().map_or("—", |p| p.label());
     let slow_marker = if e.slow { " SLOW" } else { "" };
     let suggestion_marker = if !e.suggestions.is_empty() {
         " [index suggestion]"

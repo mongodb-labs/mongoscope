@@ -27,6 +27,9 @@ pub struct ProxySource {
     pub upstream_port: u16,
     pub proxy_port: u16,
     pub next_id: Arc<AtomicU64>,
+    /// Pre-bound listener passed from the connect dialog; avoids TOCTOU between
+    /// port discovery and the actual bind in `start()`. Taken on first `start()` call.
+    pub listener: Arc<std::sync::Mutex<Option<TcpListener>>>,
 }
 
 impl ProxySource {
@@ -35,12 +38,14 @@ impl ProxySource {
         upstream_port: u16,
         proxy_port: u16,
         next_id: Arc<AtomicU64>,
+        listener: Arc<std::sync::Mutex<Option<TcpListener>>>,
     ) -> Self {
         Self {
             upstream_host,
             upstream_port,
             proxy_port,
             next_id,
+            listener,
         }
     }
 }
@@ -51,14 +56,21 @@ impl DataSource for ProxySource {
         let upstream_port = self.upstream_port;
         let proxy_port = self.proxy_port;
         let next_id = self.next_id.clone();
+        let listener_holder = self.listener;
 
         tokio::spawn(async move {
-            let listener = match TcpListener::bind(format!("127.0.0.1:{proxy_port}")).await {
-                Ok(l) => l,
-                Err(e) => {
-                    eprintln!("mongoscope: failed to bind proxy port {proxy_port}: {e}");
-                    return;
-                }
+            // Take the pre-bound listener before any `.await` to avoid holding MutexGuard
+            // across an await point (MutexGuard is not Send).
+            let pre_bound = listener_holder.lock().unwrap().take();
+            let listener = match pre_bound {
+                Some(l) => l,
+                None => match TcpListener::bind(format!("127.0.0.1:{proxy_port}")).await {
+                    Ok(l) => l,
+                    Err(e) => {
+                        eprintln!("mongoscope: failed to bind proxy port {proxy_port}: {e}");
+                        return;
+                    }
+                },
             };
 
             let (explain_tx, mut explain_rx) = mpsc::channel::<ExplainEvent>(1024);
@@ -78,14 +90,14 @@ impl DataSource for ProxySource {
                         Some(event) = explain_rx.recv() => {
                             let id = next_id.fetch_add(1, Ordering::Relaxed);
                             let entry = explain_to_entry(event, id, &pending, &app_name);
-                            store_upsert(&store, entry.clone());
-                            let _ = tx.send(entry).await;
+                            let _ = tx.send(entry.clone()).await;
+                            store_upsert(&store, entry);
                         }
                         Some(direct) = direct_rx.recv() => {
                             let id = next_id.fetch_add(1, Ordering::Relaxed);
                             let entry = direct_to_entry(direct, id);
-                            store_upsert(&store, entry.clone());
-                            let _ = tx.send(entry).await;
+                            let _ = tx.send(entry.clone()).await;
+                            store_upsert(&store, entry);
                         }
                         else => break,
                     }
@@ -96,6 +108,18 @@ impl DataSource for ProxySource {
             convert_task.abort();
         });
     }
+}
+
+fn unknown_db() -> DatabaseName {
+    DatabaseName::try_new("unknown".to_string()).expect("'unknown' always valid")
+}
+
+fn unknown_coll() -> CollectionName {
+    CollectionName::try_new("unknown".to_string()).expect("'unknown' always valid")
+}
+
+fn unknown_app() -> AppName {
+    AppName::try_new("unknown".to_string()).expect("'unknown' always valid")
 }
 
 fn explain_to_entry(
@@ -115,10 +139,10 @@ fn explain_to_entry(
     let op = command_to_op(&event.command);
 
     let db = DatabaseName::try_new(event.namespace.database().as_ref().to_string())
-        .unwrap_or_else(|_| DatabaseName::try_new("unknown".to_string()).unwrap());
+        .unwrap_or_else(|_| unknown_db());
 
     let coll = CollectionName::try_new(event.namespace.collection().as_ref().to_string())
-        .unwrap_or_else(|_| CollectionName::try_new("unknown".to_string()).unwrap());
+        .unwrap_or_else(|_| unknown_coll());
 
     let (plan, index) = classify_plan(&event.plan);
 
@@ -141,7 +165,7 @@ fn explain_to_entry(
     let app = {
         let stored = app_name.lock().unwrap().clone();
         let name = stored.unwrap_or_else(|| "unknown".to_string());
-        AppName::try_new(name).unwrap_or_else(|_| AppName::try_new("unknown".to_string()).unwrap())
+        AppName::try_new(name).unwrap_or_else(|_| unknown_app())
     };
 
     let suggestions = build_suggestions(&plan, &filter, latency_ms);
@@ -247,7 +271,10 @@ pub async fn spawn_proxy(
     let listener = TcpListener::bind(format!("127.0.0.1:{proxy_port}"))
         .await
         .map_err(|e| format!("failed to bind proxy port {proxy_port}: {e}"))?;
-    let bound_port = listener.local_addr().unwrap().port();
+    let bound_port = listener
+        .local_addr()
+        .map_err(|e| format!("failed to get bound port: {e}"))?
+        .port();
 
     let (explain_tx, mut explain_rx) = mpsc::channel::<ExplainEvent>(1024);
     let (direct_tx, mut direct_rx) = new_direct_channel();
@@ -302,13 +329,10 @@ fn store_upsert(store: &EntryStore, entry: QueryEntry) {
 }
 
 fn direct_to_entry(direct: DirectEntry, id: u64) -> QueryEntry {
-    let db = DatabaseName::try_new(direct.db)
-        .unwrap_or_else(|_| DatabaseName::try_new("unknown".to_string()).unwrap());
-    let coll = CollectionName::try_new(direct.coll)
-        .unwrap_or_else(|_| CollectionName::try_new("unknown".to_string()).unwrap());
+    let db = DatabaseName::try_new(direct.db).unwrap_or_else(|_| unknown_db());
+    let coll = CollectionName::try_new(direct.coll).unwrap_or_else(|_| unknown_coll());
     let app_str = direct.app_name.unwrap_or_else(|| "unknown".to_string());
-    let app = AppName::try_new(app_str)
-        .unwrap_or_else(|_| AppName::try_new("unknown".to_string()).unwrap());
+    let app = AppName::try_new(app_str).unwrap_or_else(|_| unknown_app());
     let is_system = direct.command.is_system();
     let op = direct.command.to_op();
     let slow = direct.latency_ms >= 1000;

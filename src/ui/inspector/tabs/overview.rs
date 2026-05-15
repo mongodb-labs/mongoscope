@@ -217,14 +217,7 @@ pub fn overview_tab<'a, Msg: Clone + 'static>(
     let stats = vec![
         KvRow::new("operation", op_label),
         KvRow::new("namespace", namespace),
-        KvRow::new(
-            "plan",
-            entry
-                .plan
-                .as_ref()
-                .map(|p| p.label())
-                .unwrap_or_else(|| "—".to_string()),
-        ),
+        KvRow::new("plan", entry.plan.as_ref().map_or("—", |p| p.label())),
         KvRow::new("index", index_str),
         KvRow::new("docs examined", docs_ex),
         KvRow::new("docs returned", docs_ret),
