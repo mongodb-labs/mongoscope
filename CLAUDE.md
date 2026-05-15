@@ -2,18 +2,6 @@
 
 Rust desktop MongoDB query debugger and traffic inspector. Built with iced 0.13 (Elm-style, `iced::application()`).
 
-## Design reference
-
-HTML/JSX design files live in `~/temp/mongoscope/` (Mongoscope.html, sidebar.jsx, feed.jsx, inspector.jsx, etc.).
-
-**If that directory is missing or empty**, ask the user for the Anthropic design viewer link so you can re-fetch and extract it there.
-
-Always follow the design. Do not deviate without explicit user permission. When permission is granted, log it here under "Approved deviations" so you don't need to ask again.
-
-## Approved deviations
-
-_(none yet)_
-
 ## Stack
 
 - `iced 0.13` — features: canvas, tokio, lazy
@@ -199,9 +187,3 @@ Subscriptions: per-connection proxy data stream (one subscription per live conne
 - Style closures must be `'static` — never capture `&Palette` directly
 - Feed stores max 2,000 entries; auto-scroll locks when user selects entry
 
-## Design assets
-
-`_designs/` contains HTML/PNG mockups:
-- `suggest-index/` — index suggestion UI, explain improvements
-- `connection-dialog/` — both steps of the add-connection flow
-- `final-design.{html,png}`, `explain-improvements.{html,png}`, etc.
