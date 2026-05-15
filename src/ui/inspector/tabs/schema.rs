@@ -1,3 +1,6 @@
+// Tab hidden pending implementation — https://github.com/mongodb-labs/mongoscope/issues/28
+#![allow(dead_code)]
+
 use crate::{
     data::model::{CollectionSchema, QueryEntry},
     theme::Palette,

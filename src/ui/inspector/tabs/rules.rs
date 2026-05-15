@@ -1,3 +1,6 @@
+// Tab hidden pending implementation — https://github.com/mongodb-labs/mongoscope/issues/32
+#![allow(dead_code)]
+
 use crate::theme::Palette;
 use iced::{
     widget::{button, column, container, row, scrollable, text},
