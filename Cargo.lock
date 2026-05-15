@@ -2693,7 +2693,7 @@ dependencies = [
 [[package]]
 name = "mongod-proxy"
 version = "0.1.0"
-source = "git+ssh://git@github.com/jeroenvervaeke/mongod-proxy.git#9062cd9987875708bf4f17eef2414e873a5e8164"
+source = "git+https://github.com/jeroenvervaeke/mongod-proxy.git#9062cd9987875708bf4f17eef2414e873a5e8164"
 dependencies = [
  "bitflags 2.11.1",
  "bson",

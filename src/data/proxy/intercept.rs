@@ -226,9 +226,16 @@ impl MongoCommand {
             Self::ServerStatus => Op::Unknown("SRV-STATUS".into()),
             Self::CurrentOp => Op::Unknown("CURRENT-OP".into()),
             Self::ReplSetGetStatus => Op::Unknown("REPL-STATUS".into()),
-            Self::Hello | Self::Ping | Self::WhatsMyUri | Self::BuildInfo
-            | Self::EndSessions | Self::SaslStart | Self::SaslContinue
-            | Self::Logout | Self::GetNonce | Self::GetLastError
+            Self::Hello
+            | Self::Ping
+            | Self::WhatsMyUri
+            | Self::BuildInfo
+            | Self::EndSessions
+            | Self::SaslStart
+            | Self::SaslContinue
+            | Self::Logout
+            | Self::GetNonce
+            | Self::GetLastError
             | Self::Authenticate => Op::Unknown("HANDSHAKE".into()),
             Self::Other(name) => Op::Unknown(name.to_uppercase()),
         }

@@ -1,6 +1,9 @@
 use std::{
     collections::VecDeque,
-    sync::{atomic::{AtomicU64, Ordering}, Arc, Mutex},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
+    },
 };
 
 use indexmap::IndexMap;
