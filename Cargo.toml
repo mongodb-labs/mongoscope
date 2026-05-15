@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/mongodb-labs/mongoscope"
 authors = ["MongoDB Labs"]
+license = "MIT"
 
 [package.metadata.wix]
 upgrade-guid = "A8882CF4-CF2C-4500-91C7-CDD6AFB25778"
