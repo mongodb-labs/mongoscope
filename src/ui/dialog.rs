@@ -20,6 +20,8 @@ pub struct ConnectionDialogState {
     pub color: ConnectionColor,
     pub error: Option<String>,
     pub proxy_port: u16,
+    pub upstream_host: String,
+    pub upstream_port: u16,
 }
 
 impl ConnectionDialogState {
@@ -31,6 +33,8 @@ impl ConnectionDialogState {
             color: ConnectionColor::None,
             error: None,
             proxy_port: 0,
+            upstream_host: String::new(),
+            upstream_port: 0,
         }
     }
 }

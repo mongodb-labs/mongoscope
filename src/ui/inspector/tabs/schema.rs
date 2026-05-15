@@ -1,3 +1,6 @@
+// Tab hidden pending implementation — https://github.com/mongodb-labs/mongoscope/issues/28
+#![allow(dead_code)]
+
 use crate::{
     data::model::{CollectionSchema, QueryEntry},
     theme::Palette,
@@ -26,10 +29,20 @@ pub fn schema_tab<Msg: 'static>(
 
     match schema {
         None => scrollable(
-            column![text(format!("No schema available for {}.{}", db, coll))
+            column![
+                text(format!(
+                    "Schema analysis for {}.{} is not yet available.",
+                    db, coll
+                ))
                 .size(fs_small)
                 .color(palette.fg_dim)
-                .font(iced::Font::MONOSPACE)]
+                .font(iced::Font::MONOSPACE),
+                text("WIP — see GitHub issue #28")
+                    .size(fs_small)
+                    .color(palette.fg_dim2)
+                    .font(iced::Font::MONOSPACE),
+            ]
+            .spacing(4)
             .padding(Padding {
                 top: 14.0,
                 bottom: 14.0,

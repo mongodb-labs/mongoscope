@@ -4,8 +4,6 @@ use iced::{
     Alignment, Background, Border, Color, Element, Font, Length, Padding,
 };
 
-pub const MOCK_MCP_PORT: u16 = 3717;
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum McpServerState {
     Stopped,
@@ -23,7 +21,6 @@ pub struct McpPanelState {
 pub enum McpMsg {
     Toggle,
     StartStop,
-    Started,
     CopyConfig,
     Noop,
 }
@@ -57,7 +54,7 @@ impl McpPanelState {
     }
 
     pub fn stop(&mut self) {
-        if matches!(self.server, McpServerState::Running { .. }) {
+        if !matches!(self.server, McpServerState::Stopped) {
             self.server = McpServerState::Stopped;
         }
     }
@@ -486,20 +483,15 @@ mod tests {
     fn on_started_transitions_to_running_port_3717() {
         let mut p = McpPanelState::new();
         p.begin_start();
-        p.on_started(MOCK_MCP_PORT);
-        assert_eq!(
-            p.server,
-            McpServerState::Running {
-                port: MOCK_MCP_PORT
-            }
-        );
+        p.on_started(3717);
+        assert_eq!(p.server, McpServerState::Running { port: 3717 });
     }
 
     #[test]
     fn stop_transitions_running_to_stopped() {
         let mut p = McpPanelState::new();
         p.begin_start();
-        p.on_started(MOCK_MCP_PORT);
+        p.on_started(3717);
         p.stop();
         assert_eq!(p.server, McpServerState::Stopped);
     }

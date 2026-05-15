@@ -17,6 +17,7 @@ pub enum FilterMsg {
     TextChanged(String),
     TextSubmit,
     KindSelected(KindFilter),
+    ToggleSystemOps,
     #[allow(dead_code)]
     ClearFilter,
 }
@@ -78,6 +79,9 @@ impl FilterState {
             FilterMsg::KindSelected(k) => {
                 self.filter.kind = k;
             }
+            FilterMsg::ToggleSystemOps => {
+                self.filter.show_system = !self.filter.show_system;
+            }
             FilterMsg::ClearFilter => {
                 self.input.clear();
                 self.filter = Filter::default();
@@ -97,11 +101,13 @@ impl FilterState {
         palette: Palette,
     ) -> Element<'a, Msg> {
         let bg1 = palette.bg1;
+        let bg_sel = palette.bg_sel;
         let border_color = palette.border;
         let fg_dim = palette.fg_dim;
         let fg_dim2 = palette.fg_dim2;
         let accent = palette.accent;
         let warn = palette.warn;
+        let show_system = self.filter.show_system;
 
         let count_str = format!("{}/{}", visible_count, total_count);
         let count_color = if visible_count < total_count {
@@ -165,6 +171,35 @@ impl FilterState {
                     move |k| on_msg(FilterMsg::KindSelected(k)),
                     &palette
                 ),
+                {
+                    let (bg, fg_c, border_c) = if show_system {
+                        (bg_sel, fg_dim, accent)
+                    } else {
+                        (bg1, fg_dim2, border_color)
+                    };
+                    button(
+                        text("sys ops")
+                            .size(11)
+                            .color(fg_c)
+                            .font(iced::Font::MONOSPACE),
+                    )
+                    .padding(iced::Padding {
+                        top: 3.0,
+                        bottom: 3.0,
+                        left: 8.0,
+                        right: 8.0,
+                    })
+                    .on_press(on_msg(FilterMsg::ToggleSystemOps))
+                    .style(move |_, _| button::Style {
+                        background: Some(iced::Background::Color(bg)),
+                        border: Border {
+                            color: border_c,
+                            width: 1.0,
+                            radius: 12.0.into(),
+                        },
+                        ..Default::default()
+                    })
+                },
                 iced::widget::Space::new(Length::Fill, 0),
                 text(count_str)
                     .size(11)

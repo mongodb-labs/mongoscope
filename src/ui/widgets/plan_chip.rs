@@ -49,8 +49,7 @@ pub fn plan_color(plan: &Plan, p: &Palette) -> Color {
     match plan {
         Plan::CollScan => p.danger,
         Plan::IdHack => p.ok,
-        Plan::IxScan(_) | Plan::IxScanLookup(_) => p.op_read,
-        Plan::Unknown(_) => p.fg_dim,
+        Plan::IxScan(_) => p.op_read,
     }
 }
 

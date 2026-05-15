@@ -1,10 +1,11 @@
 mod data;
+mod mcp;
 mod theme;
 mod ui;
 
 use data::{
-    mock::{all_templates, MockSource},
     model::QueryEntry,
+    proxy::{parse_mongo_uri, ProxySource},
     source::DataSource,
 };
 use iced::{
@@ -12,9 +13,7 @@ use iced::{
     widget::{column, container, mouse_area, row, scrollable, stack},
     Element, Length, Subscription, Task,
 };
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::sync::{atomic::AtomicU64, Arc};
 use theme::{Density, Theme};
 use ui::{
     dialog::dialog_view,
@@ -51,11 +50,7 @@ enum Message {
     ToggleTheme,
     ToggleDensity,
     ToggleCapture,
-    StartMockCapture,
-    StopMockCapture,
-    // TODO: remove when real backend is wired up — currently all mock data
-    #[allow(dead_code)]
-    Menu(MenuMsg),
+    Menu(#[allow(dead_code)] MenuMsg),
     SidebarResizeStart,
     SidebarResizeMove(f32),
     SidebarResizeEnd,
@@ -63,6 +58,8 @@ enum Message {
     InspectorResizeMove(f32),
     InspectorResizeEnd,
     Mcp(McpMsg),
+    McpServerReady(u16, tokio::task::AbortHandle),
+    McpServerFailed,
     CopyUri,
 }
 
@@ -75,8 +72,9 @@ struct App {
     sidebar_dragging: bool,
     inspector_panel: InspectorPanel,
     mcp_panel: McpPanelState,
-    mock_running: bool,
-    applied_templates: Arc<Mutex<HashSet<usize>>>,
+    connection_store: mcp::ConnectionStore,
+    mcp_next_id: Arc<AtomicU64>,
+    mcp_abort: Option<tokio::task::AbortHandle>,
 }
 
 impl App {
@@ -90,8 +88,9 @@ impl App {
             sidebar_dragging: false,
             inspector_panel: InspectorPanel::default(),
             mcp_panel: McpPanelState::new(),
-            mock_running: false,
-            applied_templates: Arc::new(Mutex::new(HashSet::new())),
+            connection_store: mcp::new_connection_store(),
+            mcp_next_id: Arc::new(AtomicU64::new(1)),
+            mcp_abort: None,
         };
         if app.sidebar.connections.is_empty() {
             app.sidebar.dialog = Some(ui::dialog::ConnectionDialogState::new());
@@ -207,17 +206,6 @@ impl App {
             }
             Message::Inspector(InspectorMsg::Explain(ExplainMsg::RunIndex)) => {
                 self.inspector.explain.index_applied = true;
-                if let Some(entry) = self.sidebar.active().and_then(|c| {
-                    c.feed
-                        .selected
-                        .and_then(|id| c.feed.entries.iter().find(|e| e.id == id))
-                }) {
-                    let num_templates = all_templates().len();
-                    let tpl_idx = entry.id.into_inner() as usize % num_templates;
-                    if let Ok(mut set) = self.applied_templates.lock() {
-                        set.insert(tpl_idx);
-                    }
-                }
                 Task::none()
             }
             Message::Inspector(InspectorMsg::Explain(ExplainMsg::CopyIndex)) => {
@@ -226,17 +214,15 @@ impl App {
                         .selected
                         .and_then(|id| c.feed.entries.iter().find(|e| e.id == id))
                 }) {
-                    let first_key = entry
-                        .filter
-                        .as_ref()
-                        .and_then(|f| f.keys().next().cloned())
-                        .unwrap_or_else(|| "field".to_string());
-                    let cmd = format!(
-                        "db.{}.createIndex({{ {}: 1 }})",
-                        entry.coll.as_str(),
-                        first_key
-                    );
-                    return iced::clipboard::write::<Message>(cmd);
+                    if let Some(filter) = &entry.filter {
+                        let pairs: Vec<String> = filter.keys().map(|k| format!("{k}: 1")).collect();
+                        let cmd = format!(
+                            "db.{}.createIndex({{ {} }})",
+                            entry.coll.as_str(),
+                            pairs.join(", ")
+                        );
+                        return iced::clipboard::write::<Message>(cmd);
+                    }
                 }
                 Task::none()
             }
@@ -247,11 +233,29 @@ impl App {
             Message::Sidebar(ref m) => {
                 match m {
                     SidebarMsg::Connections(ConnectionsMsg::DialogConnect) => {
+                        let uri = self
+                            .sidebar
+                            .dialog
+                            .as_ref()
+                            .map(|d| d.uri.clone())
+                            .unwrap_or_default();
                         self.sidebar.update(m.clone());
                         return Task::perform(
-                            async {
-                                tokio::time::sleep(Duration::from_millis(800)).await;
-                                Result::<u16, String>::Ok(27117)
+                            async move {
+                                use ui::sidebar::connections::DialogConnectSuccess;
+                                let (upstream_host, upstream_port) =
+                                    parse_mongo_uri(&uri).map_err(|e| e.to_string())?;
+                                let listener =
+                                    tokio::net::TcpListener::bind("127.0.0.1:0")
+                                        .await
+                                        .map_err(|e| format!("failed to bind proxy port: {e}"))?;
+                                let proxy_port = listener.local_addr().unwrap().port();
+                                drop(listener);
+                                Ok(DialogConnectSuccess {
+                                    proxy_port,
+                                    upstream_host,
+                                    upstream_port,
+                                })
                             },
                             |r| {
                                 Message::Sidebar(SidebarMsg::Connections(
@@ -268,6 +272,23 @@ impl App {
                             );
                             return iced::clipboard::write::<Message>(uri);
                         }
+                    }
+                    SidebarMsg::Connections(ConnectionsMsg::DialogDone) => {
+                        self.sidebar.update(m.clone());
+                        // Register the new connection in the shared store so MCP can see it.
+                        if let Some(conn) = self.sidebar.connections.last() {
+                            let id = conn.item.id as u64;
+                            let record = mcp::ConnectionRecord {
+                                id,
+                                name: conn.item.label.clone(),
+                                upstream_uri: conn.item.uri.clone(),
+                                proxy_port: conn.item.proxy_port,
+                                entries: conn.entry_store.clone(),
+                                abort_handle: None,
+                            };
+                            self.connection_store.lock().unwrap().insert(id, record);
+                        }
+                        return Task::none();
                     }
                     _ => {}
                 }
@@ -310,14 +331,6 @@ impl App {
                 if let Some(conn) = self.sidebar.active_mut() {
                     conn.capturing = !conn.capturing;
                 }
-                Task::none()
-            }
-            Message::StartMockCapture => {
-                self.mock_running = true;
-                Task::none()
-            }
-            Message::StopMockCapture => {
-                self.mock_running = false;
                 Task::none()
             }
             Message::Menu(_) => Task::none(),
@@ -369,18 +382,22 @@ impl App {
                 }
                 McpMsg::StartStop => {
                     if self.mcp_panel.begin_start() {
+                        let connections = self.connection_store.clone();
+                        let next_id = self.mcp_next_id.clone();
                         Task::perform(
-                            async { tokio::time::sleep(Duration::from_millis(800)).await },
-                            |_| Message::Mcp(McpMsg::Started),
+                            async move { start_mcp_http_server(connections, next_id).await },
+                            |result| match result {
+                                Ok((port, handle)) => Message::McpServerReady(port, handle),
+                                Err(_) => Message::McpServerFailed,
+                            },
                         )
                     } else {
+                        if let Some(handle) = self.mcp_abort.take() {
+                            handle.abort();
+                        }
                         self.mcp_panel.stop();
                         Task::none()
                     }
-                }
-                McpMsg::Started => {
-                    self.mcp_panel.on_started(ui::mcp_panel::MOCK_MCP_PORT);
-                    Task::none()
                 }
                 McpMsg::CopyConfig => {
                     if let McpServerState::Running { port } = self.mcp_panel.server {
@@ -394,6 +411,15 @@ impl App {
                 }
                 McpMsg::Noop => Task::none(),
             },
+            Message::McpServerReady(port, handle) => {
+                self.mcp_abort = Some(handle);
+                self.mcp_panel.on_started(port);
+                Task::none()
+            }
+            Message::McpServerFailed => {
+                self.mcp_panel.stop();
+                Task::none()
+            }
             Message::CopyUri => {
                 let uri = self
                     .sidebar
@@ -442,17 +468,22 @@ impl App {
             &palette,
         );
 
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
         let (ops_per_sec, query_count, slow_count) = self
             .sidebar
             .active()
             .map(|c| {
-                let ops = if c.feed.entries.len() >= 10 {
-                    12.5f32
-                } else {
-                    0.0
-                };
+                let recent = c
+                    .feed
+                    .entries
+                    .iter()
+                    .filter(|e| e.t_ms.into_inner() >= now_ms.saturating_sub(1000))
+                    .count();
                 let slow = c.feed.entries.iter().filter(|e| e.slow).count();
-                (ops, c.feed.entries.len(), slow)
+                (recent as f32, c.feed.entries.len(), slow)
             })
             .unwrap_or((0.0, 0, 0));
 
@@ -599,22 +630,30 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let mock_running = self.mock_running;
-        let applied_templates = self.applied_templates.clone();
         let data_subs: Vec<Subscription<Message>> = self
             .sidebar
             .connections
             .iter()
-            .filter(|c| c.item.live && mock_running)
+            .filter(|c| c.item.live && !c.item.upstream_host.is_empty())
             .map(|c| {
                 let id = c.item.id;
-                let applied = applied_templates.clone();
+                let upstream_host = c.item.upstream_host.clone();
+                let upstream_port = c.item.upstream_port;
+                let proxy_port = c.item.proxy_port;
+                let entry_store = c.entry_store.clone();
+                let next_id = self.mcp_next_id.clone();
                 Subscription::run_with_id(
                     id,
                     iced::stream::channel(256, move |mut output| async move {
                         use iced::futures::SinkExt;
                         let (tx, mut rx) = tokio::sync::mpsc::channel(256);
-                        Box::new(MockSource::new(applied)).start(tx);
+                        Box::new(ProxySource::new(
+                            upstream_host,
+                            upstream_port,
+                            proxy_port,
+                            next_id,
+                        ))
+                        .start(tx, entry_store);
                         loop {
                             let first = rx.recv().await;
                             let Some(first) = first else { break };
@@ -646,20 +685,6 @@ impl App {
 
         let mut all = data_subs;
 
-        let kbd_sub = iced::event::listen_with(|event, _status, _window| match event {
-            iced::Event::Keyboard(iced::keyboard::Event::KeyPressed { key, .. }) => match key {
-                iced::keyboard::Key::Character(c) if c.as_str() == "s" => {
-                    Some(Message::StartMockCapture)
-                }
-                iced::keyboard::Key::Character(c) if c.as_str() == "d" => {
-                    Some(Message::StopMockCapture)
-                }
-                _ => None,
-            },
-            _ => None,
-        });
-        all.push(kbd_sub);
-
         if self.sidebar_dragging {
             let drag_sub = iced::event::listen_with(|event, _status, _window| match event {
                 iced::Event::Mouse(mouse::Event::CursorMoved { position }) => {
@@ -690,12 +715,92 @@ impl App {
     }
 }
 
-fn main() -> iced::Result {
-    iced::application("Mongoscope", App::update, App::view)
-        .subscription(App::subscription)
-        .window(iced::window::Settings {
-            size: iced::Size::new(1400.0, 900.0),
-            ..Default::default()
-        })
-        .run_with(App::new)
+// ── GUI MCP HTTP server ───────────────────────────────────────────────────────
+
+async fn start_mcp_http_server(
+    connections: mcp::ConnectionStore,
+    next_id: Arc<AtomicU64>,
+) -> Result<(u16, tokio::task::AbortHandle), String> {
+    use rmcp::transport::streamable_http_server::{
+        session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
+    };
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .map_err(|e| format!("failed to bind MCP port: {e}"))?;
+    let port = listener.local_addr().unwrap().port();
+
+    let service = StreamableHttpService::new(
+        move || {
+            Ok(mcp::MongoscopeMcp::new(
+                connections.clone(),
+                next_id.clone(),
+            ))
+        },
+        Arc::new(LocalSessionManager::default()),
+        StreamableHttpServerConfig::default(),
+    );
+
+    let router = axum::Router::new().nest_service("/mcp", service);
+
+    let task = tokio::spawn(async move {
+        let _ = axum::serve(listener, router).await;
+    });
+    let abort_handle = task.abort_handle();
+
+    Ok((port, abort_handle))
+}
+
+// ── CLI ───────────────────────────────────────────────────────────────────────
+
+#[derive(clap::Parser)]
+#[command(about = "Mongoscope — MongoDB query debugger and traffic inspector")]
+struct Args {
+    /// Run as a headless MCP server over stdio (no GUI)
+    #[arg(long)]
+    mcp: bool,
+}
+
+fn main() -> anyhow::Result<()> {
+    use clap::Parser;
+    let args = Args::parse();
+
+    if args.mcp {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?
+            .block_on(run_mcp())?;
+    } else {
+        iced::application("Mongoscope", App::update, App::view)
+            .subscription(App::subscription)
+            .window(iced::window::Settings {
+                size: iced::Size::new(1400.0, 900.0),
+                ..Default::default()
+            })
+            .run_with(App::new)?;
+    }
+    Ok(())
+}
+
+async fn run_mcp() -> anyhow::Result<()> {
+    use rmcp::{transport::stdio, ServiceExt};
+    use std::sync::{atomic::AtomicU64, Arc};
+
+    eprintln!("mongoscope-mcp: ready (stdio transport)");
+    eprintln!("mongoscope-mcp: use add_connection tool to start intercepting traffic");
+
+    let connections = mcp::new_connection_store();
+    let next_id = Arc::new(AtomicU64::new(1));
+
+    let service = mcp::MongoscopeMcp::new(connections, next_id)
+        .serve(stdio())
+        .await
+        .map_err(|e| anyhow::anyhow!("MCP serve error: {e}"))?;
+
+    service
+        .waiting()
+        .await
+        .map_err(|e| anyhow::anyhow!("MCP wait error: {e}"))?;
+
+    Ok(())
 }

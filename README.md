@@ -46,17 +46,14 @@ Tokens like `db:`, `coll:`, and `app:` scope results immediately. One-click pres
 
 ### Deep query inspector
 
-Select any operation to open the inspector panel. Seven tabs:
+Select any operation to open the inspector panel. Four tabs:
 
 | Tab | What it shows |
 |-----|---------------|
 | **Overview** | Latency, namespace, op type, key metrics |
 | **Request** | The filter, pipeline, or update document as a syntax-highlighted BSON tree |
 | **Response** | Returned documents |
-| **Explain** | Full query plan: docs examined vs. returned, index used (or not) |
-| **Compose** | Edit and re-run the query |
-| **Rules** | Pattern-based rules to warn, block, or highlight matching queries |
-| **Schema** | Field types, coverage %, and sample values for the collection |
+| **Explain** | Full query plan: docs examined vs. returned, index used (or not), index suggestions |
 
 The panel is resizable. Drag the divider or hit maximize for full focus.
 
@@ -80,11 +77,13 @@ See which services are responsible for query load. Each client app gets a color 
 
 ### Database and collection browser
 
-Hierarchical tree of all databases and collections, with document counts, storage sizes, and index counts. Scope the feed to a specific collection instantly.
+Hierarchical tree of all databases and collections seen in captured traffic, with query counts per collection. Scope the feed to a specific collection instantly.
 
 ### MCP integration
 
-Start an MCP server from within the app (default port: 3717) and connect Claude or another AI assistant. Get a ready-to-paste config snippet. Ask questions about query patterns, get index advice, or analyze traffic with the full context of what mongoscope is seeing.
+Start an MCP server from within the app and connect Claude or another AI assistant. The server binds to a random available port; mongoscope shows the ready-to-paste config snippet once it's running. Ask questions about query patterns, get index advice, or analyze traffic with the full context of what mongoscope is seeing.
+
+Also available headless: `mongoscope --mcp` runs a standalone stdio MCP server with no GUI.
 
 ### Dark and light theme
 
@@ -128,14 +127,16 @@ cargo clippy
 
 | Feature | Status |
 |---------|--------|
-| Query feed | 🚧 In progress |
-| Filtering and search | 🚧 In progress |
-| Inspector (all 7 tabs) | 🚧 In progress |
-| Index suggestions | 🚧 In progress |
-| Connection management | 🚧 In progress |
-| Sidebar (DBs, apps, filters) | 🚧 In progress |
-| MCP server integration | 🚧 In progress |
-| MongoDB wire protocol capture | 🚧 In progress |
+| Query feed | ✅ Working |
+| Filtering and search | ✅ Working |
+| Inspector (Overview, Request, Response, Explain) | ✅ Working |
+| Inspector (Schema, Rules, Compose) | 📋 Planned (#28, #32, #33) |
+| Index suggestions | ✅ Working (requires captured filter) |
+| Connection management | ✅ Working (add only; removal: #30) |
+| Sidebar (DBs, apps, filters) | ✅ Working |
+| MCP server — GUI HTTP mode | ✅ Working |
+| MCP server — headless stdio (`--mcp`) | ✅ Working |
+| MongoDB wire protocol capture | ✅ Working |
 | Persistent settings | 📋 Planned |
 
 ---

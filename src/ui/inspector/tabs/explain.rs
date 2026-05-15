@@ -144,6 +144,36 @@ pub fn explain_tab<Msg: Clone + 'static>(
     palette: &Palette,
     fs: f32,
 ) -> Element<'static, Msg> {
+    // No plan data means explain wasn't available for this operation.
+    if entry.plan.is_none() {
+        let fg_dim = palette.fg_dim;
+        let fg_dim2 = palette.fg_dim2;
+        let total_ms = entry.latency_ms.into_inner();
+        let op_label = entry.op.label();
+        return scrollable(
+            column![
+                text(format!("{} — no explain data available", op_label))
+                    .size(fs)
+                    .color(fg_dim)
+                    .font(iced::Font::MONOSPACE),
+                iced::widget::Space::new(0, 6),
+                text(format!("execution time: {}ms", total_ms))
+                    .size(fs)
+                    .color(fg_dim2)
+                    .font(iced::Font::MONOSPACE),
+            ]
+            .spacing(4)
+            .padding(Padding {
+                top: 14.0,
+                bottom: 14.0,
+                left: 16.0,
+                right: 16.0,
+            }),
+        )
+        .height(Length::Fill)
+        .into();
+    }
+
     let total_ms = entry.latency_ms.into_inner();
     let rejected_plan_count = entry.rejected_plan_count;
     let stages = explain_stages(entry, total_ms);
@@ -209,15 +239,11 @@ pub fn explain_tab<Msg: Clone + 'static>(
     let stages_col = column(stage_rows).spacing(3);
 
     // ── suggestions card
-    let index_spec = {
-        let keys: Vec<String> = entry
-            .filter
-            .as_ref()
-            .map(|f| f.keys().cloned().collect())
-            .unwrap_or_else(|| vec!["field".to_string()]);
-        let pairs: Vec<String> = keys.iter().map(|k| format!("\"{}\": 1", k)).collect();
+    // TODO: index suggestion without captured filter is dropped (GitHub issue #29)
+    let index_spec = entry.filter.as_ref().map(|f| {
+        let pairs: Vec<String> = f.keys().map(|k| format!("\"{k}\": 1")).collect();
         format!("{{ {} }}", pairs.join(", "))
-    };
+    });
     let coll = entry.coll.as_str().to_string();
     let docs_ex = entry
         .docs_examined
@@ -569,7 +595,7 @@ pub fn explain_tab<Msg: Clone + 'static>(
                         .size(fs_small)
                         .color(fg)
                         .font(iced::Font::MONOSPACE),
-                    text(index_spec.clone())
+                    text(index_spec.clone().unwrap_or_default())
                         .size(fs_small)
                         .color(tok_str)
                         .font(iced::Font::MONOSPACE),
@@ -822,32 +848,6 @@ fn explain_stages(entry: &QueryEntry, total_ms: u32) -> Vec<FlameRowData> {
                 ms: (total_ms as f32 * 0.15) as u32,
                 total_ms,
                 docs: entry.docs_returned.as_ref().map(|d| d.into_inner()),
-                note: None,
-                kind: FlameRowKind::Ok,
-            },
-        ],
-        Some(Plan::IxScanLookup(idx)) => vec![
-            FlameRowData {
-                name: "IXSCAN".into(),
-                ms: (total_ms as f32 * 0.10) as u32,
-                total_ms,
-                docs: None,
-                note: Some(idx.as_str().to_string()),
-                kind: FlameRowKind::Ok,
-            },
-            FlameRowData {
-                name: "$LOOKUP".into(),
-                ms: (total_ms as f32 * 0.75) as u32,
-                total_ms,
-                docs: entry.docs_examined.as_ref().map(|d| d.into_inner()),
-                note: entry.warn.clone(),
-                kind: FlameRowKind::Warn,
-            },
-            FlameRowData {
-                name: "PROJECTION".into(),
-                ms: (total_ms as f32 * 0.15) as u32,
-                total_ms,
-                docs: None,
                 note: None,
                 kind: FlameRowKind::Ok,
             },
