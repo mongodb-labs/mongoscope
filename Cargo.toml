@@ -2,6 +2,9 @@
 name = "mongoscope"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/mongodb-labs/mongoscope"
+authors = ["MongoDB Labs"]
+license = "MIT"
 
 [dependencies]
 iced = { version = "0.13", features = ["canvas", "tokio", "lazy"] }
@@ -20,3 +23,8 @@ axum = { version = "0.8" }
 schemars = "0.8"
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
